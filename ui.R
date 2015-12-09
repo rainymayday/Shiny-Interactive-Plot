@@ -16,7 +16,7 @@ shinyUI(fluidPage(
       selectInput('y.factor', 
                   'sales_rep', 
                   unique(as.character(df$Lead.Generator)),
-                  selectize = TRUE,multiple = TRUE),
+                  selectize = TRUE),
       dateRangeInput('dateRange',
                      label = 'Date range input: yyyy-mm-dd',
                      start = Sys.Date() - 14, end = Sys.Date() 
