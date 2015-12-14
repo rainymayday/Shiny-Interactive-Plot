@@ -2,54 +2,85 @@ library(shiny)
 leads <- source('Leads.R')
 leads <- as.data.frame(leads[1])
 names(leads) <- c("Date.Created","Lead.Generator","segment", "freq")
-shinyUI(fluidPage(
-  
-  titlePanel("Sales Activity Report"),
-  
-  sidebarLayout(
-    sidebarPanel(
-
-      selectInput('segment', 
-                    'segment', 
-                    unique(as.character(leads$segment))),
-
-      selectInput('y.factor', 
-                  'sales_rep', 
-                  unique(as.character(leads$Lead.Generator)),
-                  selectize = TRUE),
-      dateRangeInput('dateRange',
-                     label = 'Date Range',
-                     start = Sys.Date() - 14, end = Sys.Date() 
-      ),
-      h5(strong('Plot Options')),
-      checkboxInput("Month",
-                    label = "By Month",value = FALSE),
-      checkboxInput("Week",
-                    label = "By Week",value = FALSE),
-      checkboxInput("Day",
-                    label = "By Day",value = FALSE),
-      downloadButton('downloadSales', 'Download Sales Table'),
-      downloadButton('downloadLeads', 'Download Leads Table')
-      
-      
-
-    ),
-    
-
-    mainPanel(
-      tabsetPanel(type="tab",
-                  tabPanel("LeadsPlot by day",plotOutput("LeadsPlot")),
-                  tabPanel("LeadsPlot by Week",plotOutput("LeadsPlot_by_week")),
-                  tabPanel("SalesPlot by day",plotOutput("SalesPlot")),
-                  tabPanel("SalesPlot by Week",plotOutput("SalesPlot_by_week")),
-                  tabPanel("LeadsTable",dataTableOutput("LeadsTable")),
-                  tabPanel("SalesTable",dataTableOutput("SalesTable"))
-                  )
-                 
-                  
-      )
-      
-      
-    )
-  )
-)
+shinyUI(navbarPage("Sales Activity Report",
+                   tabPanel("Leads",
+                            column(4, wellPanel( 
+                              selectInput('segment', 'Segment',  unique(as.character(leads$segment))),
+                              selectInput('y.factor', 
+                                          'sales_rep', 
+                                          unique(as.character(leads$Lead.Generator)),
+                                          selectize = TRUE),
+                              dateRangeInput('dateRange','Choose date range'
+                                             ,start = Sys.Date() - 14, end = Sys.Date()),
+                              br(),
+                              
+                              fluidRow(
+                                column(7, radioButtons("plotty", "Plot Type",
+                                                       c("By day"="day","By week"="week")
+                                                       , selected="day")
+                                ),
+                                column(5, radioButtons("plot", "Plot Type",
+                                                       c("Bar chart","Line Chart"), selected="Line Chart"))
+                              ),
+                              
+                                fluidRow(
+                                h5(strong('Plot Options')),
+                                checkboxInput('avg_line', 'Compare with average level within segment'),
+                                downloadButton('downloadLeads', 'Download Leads Table')
+                              ))
+                            ),
+                            mainPanel(
+                              tabsetPanel(type="tab",
+                                          tabPanel("LeadsPlot",plotOutput("LeadsPlot")),
+                                          tabPanel("LeadsTable",dataTableOutput("LeadsTable"))
+                                          
+                                          
+                              )
+                              
+                              
+                            )
+                   ),
+                   tabPanel("Sales",
+                            column(4, wellPanel( 
+                              selectInput('segment_sale', 'Segment',  unique(as.character(leads$segment))),
+                              selectInput('sales_rep', 
+                                          'sales_rep', 
+                                          unique(as.character(leads$Lead.Generator)),
+                                          selectize = TRUE),
+                              dateRangeInput('dateRange_sale','Choose date range'
+                                             ,start = Sys.Date() - 14, end = Sys.Date()),
+                              br(),
+                              
+                              fluidRow(
+                                column(7, radioButtons("plotty_sale", "Plot Type",
+                                                       c("By day"="day","By week"="week")
+                                                       , selected="day")
+                                ),
+                                column(5, radioButtons("plot_sale", "Plot Type",
+                                                       c("Bar chart","Line Chart"), selected="Line Chart"))
+                              ),
+                              
+                              fluidRow(
+                                h5(strong('Plot Options')),
+                                checkboxInput('avg_line_sale', 'Compare with average level within segment'),
+                                downloadButton('downloadSales', 'Download Sales Table')
+                              ))
+                            ),
+                            #column(8, plotOutput('SalesPlot'))
+                            mainPanel(
+                              tabsetPanel(type="tab",
+                                          tabPanel("SalesPlot",plotOutput("SalesPlot")),
+                                          tabPanel("SalesTable",dataTableOutput("SalesTable"))
+                                          
+                                          
+                              )
+                              
+                              
+                            )
+                   ),
+                   tabPanel("SummaryTable"
+                            )
+                   
+                   
+                   
+                   ))
