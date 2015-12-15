@@ -18,15 +18,16 @@ shinyUI(navbarPage("Sales Activity Report",
                                 column(7, radioButtons("plotty", "Plot Type",
                                                        c("By day"="day","By week"="week")
                                                        , selected="day")
-                                ),
-                                column(5, radioButtons("plot", "Plot Type",
-                                                       c("Bar chart","Line Chart"), selected="Line Chart"))
+                                       
+                                )
+                            
                               ),
                               
                                 fluidRow(
-                                h5(strong('Plot Options')),
-                                checkboxInput('avg_line', 'Compare with average level within segment'),
-                                downloadButton('downloadLeads', 'Download Leads Table')
+                                  column(7,h5(strong('Plot Options')),
+                                         checkboxInput('avg_line', 'Compare with average level within segment'),
+                                         downloadButton('downloadLeads', 'Download Leads Table'))
+                                
                               ))
                             ),
                             mainPanel(
@@ -55,18 +56,17 @@ shinyUI(navbarPage("Sales Activity Report",
                                 column(7, radioButtons("plotty_sale", "Plot Type",
                                                        c("By day"="day","By week"="week")
                                                        , selected="day")
-                                ),
-                                column(5, radioButtons("plot_sale", "Plot Type",
-                                                       c("Bar chart","Line Chart"), selected="Line Chart"))
+                                )
                               ),
                               
                               fluidRow(
-                                h5(strong('Plot Options')),
-                                checkboxInput('avg_line_sale', 'Compare with average level within segment'),
-                                downloadButton('downloadSales', 'Download Sales Table')
+                                column(7,
+                                       h5(strong('Plot Options')),
+                                       checkboxInput('avg_line_sale', 'Compare with average level within segment'),
+                                       downloadButton('downloadSales', 'Download Sales Table'))
+
                               ))
                             ),
-                            #column(8, plotOutput('SalesPlot'))
                             mainPanel(
                               tabsetPanel(type="tab",
                                           tabPanel("SalesPlot",plotOutput("SalesPlot")),
