@@ -1,17 +1,30 @@
 library(shiny)
-leads <- source('Leads.R')
-leads <- as.data.frame(leads[1])
-names(leads) <- c("Date.Created","Lead.Generator","segment", "freq")
+load_df <- function(Rfile){
+  df <- source(Rfile)
+  df <- as.data.frame(df[1])
+  names(df) <- gsub("value.","",names(df))
+  return (df)
+}
+
+leads <- load_df('Leads.R')
+sales <- load_df('SO.R')
+
+
+
+
+
+
 shinyUI(navbarPage("Sales Activity Report",
                    tabPanel("Leads",
                             column(4, wellPanel( 
                               selectInput('segment', 'Segment',  unique(as.character(leads$segment))),
-                              selectInput('y.factor', 
-                                          'sales_rep', 
+                              selectInput('LeadsGen', 
+                                          'Leads Generator', 
                                           unique(as.character(leads$Lead.Generator)),
-                                          selectize = TRUE),
-                              dateRangeInput('dateRange','Choose date range'
-                                             ,start = Sys.Date() - 14, end = Sys.Date()),
+                                          selectize = TRUE,
+                                          multiple = FALSE),
+                              uiOutput('dateRange'),
+                              
                               br(),
                               
                               fluidRow(
@@ -43,13 +56,12 @@ shinyUI(navbarPage("Sales Activity Report",
                    ),
                    tabPanel("Sales",
                             column(4, wellPanel( 
-                              selectInput('segment_sale', 'Segment',  unique(as.character(leads$segment))),
+                              selectInput('segment_sale', 'Segment',  unique(as.character(sales$segment))),
                               selectInput('sales_rep', 
                                           'sales_rep', 
-                                          unique(as.character(leads$Lead.Generator)),
+                                          unique(as.character(sales$Sales.Rep.1)),
                                           selectize = TRUE),
-                              dateRangeInput('dateRange_sale','Choose date range'
-                                             ,start = Sys.Date() - 14, end = Sys.Date()),
+                              uiOutput('dateRange_sale'),
                               br(),
                               
                               fluidRow(
