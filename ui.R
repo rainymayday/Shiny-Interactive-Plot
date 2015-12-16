@@ -9,12 +9,30 @@ load_df <- function(Rfile){
 leads <- load_df('Leads.R')
 sales <- load_df('SO.R')
 
-
-
-
-
-
 shinyUI(navbarPage("Sales Activity Report",
+                   tabPanel("Upload Data File For Analysis",
+                            column(3, wellPanel(
+                              fileInput('file1', 'Choose File (EXCEL,TXT,CSV etc)',
+                                        accept=c('text/csv', 
+                                                 'text/comma-separated-values,text/plain', 
+                                                 '.csv')),
+                              tags$hr(),
+                              checkboxInput('header', 'Header', TRUE),
+                              radioButtons('sep', 'Separator',
+                                           c(Comma=',',
+                                             Semicolon=';',
+                                             Tab='\t'),
+                                           ','),
+                              radioButtons('quote', 'Quote',
+                                           c(None='',
+                                             'Double Quote'='"',
+                                             'Single Quote'="'"),
+                                           '"')
+                            )),
+                            mainPanel(
+                              tableOutput('data')
+                            )
+                            ),
                    tabPanel("Leads",
                             column(4, wellPanel( 
                               selectInput('segment', 'Segment',  unique(as.character(leads$segment))),
@@ -31,24 +49,22 @@ shinyUI(navbarPage("Sales Activity Report",
                                 column(7, radioButtons("plotty", "Plot Type",
                                                        c("By day"="day","By week"="week")
                                                        , selected="day")
-                                       
                                 )
                             
                               ),
                               
                                 fluidRow(
-                                  column(7,h5(strong('Plot Options')),
-                                         checkboxInput('avg_line', 'Compare with average level within segment'),
-                                         downloadButton('downloadLeads', 'Download Leads Table'))
-                                
+                                  column(9,h5(strong('Plot Options')),
+                                         checkboxInput('avg_line','Compare with average level'),
+                                         checkboxInput('sale_rep2'
+                                                       ,'Compare with other sales representatives'),
+                                         downloadButton('downloadLeads','Download Leads Table'))
                               ))
                             ),
                             mainPanel(
                               tabsetPanel(type="tab",
                                           tabPanel("LeadsPlot",plotOutput("LeadsPlot")),
                                           tabPanel("LeadsTable",dataTableOutput("LeadsTable"))
-                                          
-                                          
                               )
                               
                               
@@ -56,9 +72,10 @@ shinyUI(navbarPage("Sales Activity Report",
                    ),
                    tabPanel("Sales",
                             column(4, wellPanel( 
-                              selectInput('segment_sale', 'Segment',  unique(as.character(sales$segment))),
+                              selectInput('segment_sale','Segment'
+                                          ,unique(as.character(sales$segment))),
                               selectInput('sales_rep', 
-                                          'sales_rep', 
+                                          'Sales Representative', 
                                           unique(as.character(sales$Sales.Rep.1)),
                                           selectize = TRUE),
                               uiOutput('dateRange_sale'),
@@ -74,8 +91,10 @@ shinyUI(navbarPage("Sales Activity Report",
                               fluidRow(
                                 column(7,
                                        h5(strong('Plot Options')),
-                                       checkboxInput('avg_line_sale', 'Compare with average level within segment'),
-                                       downloadButton('downloadSales', 'Download Sales Table'))
+                                       checkboxInput('avg_line_sale'
+                                                     ,'Compare with average level within segment'),
+                                       downloadButton('downloadSales'
+                                                      ,'Download Sales Table'))
 
                               ))
                             ),
@@ -92,7 +111,4 @@ shinyUI(navbarPage("Sales Activity Report",
                    ),
                    tabPanel("SummaryTable"
                             )
-                   
-                   
-                   
                    ))

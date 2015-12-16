@@ -36,7 +36,6 @@ sales_avg_week <- aggregate(sales$Maximum.of.Amount..Net.of.Tax.
                             ,FUN = mean)
 names(sales_avg_week) <- c("Date","Segment","Sales Amount")
 
-
 shinyServer(function(input, output,session) {
   SalesTable <- aggregate(sales$Maximum.of.Amount..Net.of.Tax.,by = list(sales$Sales.Rep.1,sales$segment),FUN = sum)
   names(SalesTable) <- c("Sale_rep","Segment","Sales_Amount")
@@ -60,11 +59,20 @@ shinyServer(function(input, output,session) {
      if(input$plotty == "day"){
        dateRangeInput('dateRange','Choose date range'
                       ,start = as.Date("2015-11-01"), end = as.Date("2015-12-01"))
-       
      }
-     
-     
    })
+   
+   output$data <- renderTable({
+     
+     inFile <- input$file1
+     
+     if (is.null(inFile))
+       return(NULL)
+     
+     read.csv(inFile$datapath, header=input$header, sep=input$sep, 
+              quote=input$quote)
+   })
+  
    output$dateRange_sale <- renderUI({
      if(input$plotty_sale == "day"){
        dateRangeInput('dateRange_sale','Choose date range'
@@ -74,9 +82,6 @@ shinyServer(function(input, output,session) {
      
      
    })
-   
-   
-   
 
    output$LeadsPlot <- renderPlot({
     environment<-environment()
@@ -104,16 +109,11 @@ shinyServer(function(input, output,session) {
            avg = leads_avg_day
            plotty = geom_line(aesthetics1,data = leads_data,size = 1.2,colour = "#00CCCC")
              }
-
     )
-
       p <- ggplot(data = leads_data,mapping = aesthetics1,environment = environment)+
         plotty+geom_point(size = 1.5)
-
       
       if(input$avg_line){
-        
-
           p <- p+
             geom_line(mapping = aes(x=Date, y=Leads)
                            ,data = avg,colour = "#CC0033",size = 0.8,linetype = 6)
@@ -156,7 +156,7 @@ shinyServer(function(input, output,session) {
     p <- ggplot(data,aesthetics1
                 ,environment = environment)+
       plotty+
-      geom_point(aesthetics1,data,colour = "#000033")
+      geom_point(aesthetics1,data,size = 1.5,colour = "#000033")
     
     if(input$avg_line_sale){
       p <- p+geom_line(mapping = aes(x=Date, y=`Sales Amount`)
