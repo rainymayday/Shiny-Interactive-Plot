@@ -5,6 +5,7 @@ library(ggplot2)
 library(plyr)
 library(scales)
 
+
 load_df <- function(Rfile){
   df <- source(Rfile)
   df <- as.data.frame(df[1])
@@ -42,16 +43,16 @@ contract <- load_df('Contract.R')
 
 
 
-
-
 shinyServer(function(input, output,session) {
-  SalesTable <- aggregate(sales$Maximum.of.Amount..Net.of.Tax.,by = list(sales$Sales.Rep.1,sales$segment),FUN = sum)
+  SalesTable <- aggregate(sales$Maximum.of.Amount..Net.of.Tax.
+                          ,by = list(sales$Sales.Rep.1,sales$segment),FUN = sum)
   names(SalesTable) <- c("Sale_rep","Segment","Sales_Amount")
   
   LeadsTable <- aggregate(leads$freq,by = list(leads$Lead.Generator,leads$segment),FUN = sum)
   names(LeadsTable) <- c("Sale_rep","segment","No of Leads")
   
-  SalesTable_No <- aggregate(sales$Event.Name,by = list(sales$Sales.Rep.1,sales$segment),FUN = length)
+  SalesTable_No <- aggregate(sales$Event.Name
+                             ,by = list(sales$Sales.Rep.1,sales$segment),FUN = length)
   SalesTable$No_of_Sales <- SalesTable_No[,3]
   
   ProposalTable <- aggregate(proposal$Amount..Net.of.Tax.,by = list(proposal$Created.By,proposal$segment),FUN = sum)
@@ -98,6 +99,14 @@ shinyServer(function(input, output,session) {
                       ,start = as.Date("2015-11-01"), end = as.Date("2015-12-01"))
      }
    })
+   output$RepLevel<- renderUI({
+
+     if(input$level == "sales rep"){
+       selectInput("RepLevel","Sales Rep",choices = unique(as.character(sales$Sales.Rep.1) ))
+     }
+     
+   })
+  
   
 
    
@@ -213,7 +222,7 @@ shinyServer(function(input, output,session) {
     sales = subset(sales,as.Date(as.character(Date.Created)) >= input$dateRange_sale[1]&as.Date(as.character(Date.Created)) <= input$dateRange[2])
     data = subset(sales,trimws(Sales.Rep.1,"both")==trimws(input$sales_rep,"both"))
     sales.day <- aggregate(data$Maximum.of.Amount..Net.of.Tax.,by = list(data$Date.Created),FUN = sum)
-    
+    #sales.day$sales_no <- aggregate(data$Maximum.of.Amount..Net.of.Tax.,by = list(data$Date.Created),FUN = length)[,2]
     data$week <- as.numeric( format(data$Date.Created+3, "%U"))
     sales.week <- aggregate(data$Maximum.of.Amount..Net.of.Tax.,by = list(data$week),FUN = sum)
     
@@ -250,6 +259,8 @@ shinyServer(function(input, output,session) {
     return (p)
   })
   
+
+  
   output$ContractPlots <- renderPlot({
     environment<-environment()
     data=subset(contract,trimws(Created.By,"both") %in% trimws(input$Contract_creator,"both"))
@@ -258,6 +269,8 @@ shinyServer(function(input, output,session) {
     contract_sub$week <- as.numeric( format(contract_sub$Date.Created+3, "%U"))
     contract.week <- aggregate(contract_sub$Amount..Net.of.Tax., by = list(contract_sub$week),FUN = sum)
     contract.day <- aggregate(contract_sub$Amount..Net.of.Tax.,by = list(contract_sub$Date.Created),FUN=sum)
+    names(contract.day) <- c("Date","Amount")
+    
     switch(input$plotty_con,
            "week" = {aesthetics1 = aes(x=contract.week[,1], y=contract.week[,2])
            pro_data = contract.week
@@ -322,6 +335,16 @@ shinyServer(function(input, output,session) {
     content = function(file){
       write.csv(ProposalTable,file)
     }
+  )
+  
+  output$downloadContract <- downloadHandler(
+    filename = function(){
+      paste('Contract','.csv',sep='')
+    },
+    content = function(file){
+      write.csv(contractTable,file)
+    }
+    
   )
   
  })

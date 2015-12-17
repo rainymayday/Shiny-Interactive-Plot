@@ -1,4 +1,6 @@
 library(shiny)
+library(dygraphs)
+
 load_df <- function(Rfile){
   df <- source(Rfile)
   df <- as.data.frame(df[1])
@@ -151,7 +153,18 @@ shinyUI(navbarPage("Sales Activity Report",
                    ),
                    
                    tabPanel("Summary",
-                            column(4,wellPanel()),
+                            column(3,wellPanel(
+                              fluidRow(
+                              column(7, radioButtons("reportty", "Report Type",
+                                                     c("By day"="day","By week"="week")
+                                                     , selected="day")
+                              )),
+                              selectInput("level","Level",choices = c("segment","sales rep")),
+                              selectInput("segLevel","segment",choices = unique(as.character(sales$segment))),
+                              uiOutput("RepLevel"),
+                              downloadButton("downloadReport","Export Report")
+                              
+                            )),
                             mainPanel(
                               tabsetPanel(type = "tab",
                                           tabPanel("Highlights"),
