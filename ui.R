@@ -8,6 +8,8 @@ load_df <- function(Rfile){
 
 leads <- load_df('Leads.R')
 sales <- load_df('SO.R')
+proposal <- load_df('Proposal.R')
+contract <- load_df('Contract.R')
 
 shinyUI(navbarPage("Sales Activity Report",
                    tabPanel("Upload Data File For Analysis",
@@ -42,21 +44,18 @@ shinyUI(navbarPage("Sales Activity Report",
                                           selectize = TRUE,
                                           multiple = FALSE),
                               uiOutput('dateRange'),
-                              
                               br(),
-                              
                               fluidRow(
                                 column(7, radioButtons("plotty", "Plot Type",
                                                        c("By day"="day","By week"="week")
                                                        , selected="day")
                                 )
-                            
                               ),
                               
                                 fluidRow(
                                   column(9,h5(strong('Plot Options')),
                                          checkboxInput('avg_line','Compare with average level'),
-                                         checkboxInput('sale_rep2'
+                                         checkboxInput('compare'
                                                        ,'Compare with other sales representatives'),
                                          downloadButton('downloadLeads','Download Leads Table'))
                               ))
@@ -64,12 +63,57 @@ shinyUI(navbarPage("Sales Activity Report",
                             mainPanel(
                               tabsetPanel(type="tab",
                                           tabPanel("LeadsPlot",plotOutput("LeadsPlot")),
-                                          tabPanel("LeadsTable",dataTableOutput("LeadsTable"))
-                              )
+                                          tabPanel("LeadsTable",dataTableOutput("LeadsTable"))))),
+                   tabPanel("Contract",
+                            column(4,wellPanel(
+                              selectInput('segment_con', 'Segment',  unique(as.character(contract$segment))),
+                              selectInput('Contract_creator', 
+                                          'Created by', 
+                                          unique(as.character(contract$Created.By)),
+                                          selectize = TRUE,
+                                          multiple = FALSE),
+                              uiOutput('dateRange_con'),
+                              br(),
                               
+                              fluidRow(
+                                column(7, radioButtons("plotty_con", "Plot Type",
+                                                       c("By day"="day","By week"="week")
+                                                       , selected="day")
+                                )
+                              ),
+                              downloadButton('downloadContract'
+                                             ,'Download Contract Table')
+                            )),
+                            mainPanel(
+                              tabsetPanel(type = "tab",
+                                          tabPanel("Contract Plots",plotOutput("ContractPlots")),
+                                          tabPanel("Contract Tables",tableOutput("ContractTable")))  
+                            
+                            )),
+                   tabPanel("Proposal",
+                            column(4,wellPanel(
+                              selectInput('segment_pro', 'Segment',  unique(as.character(proposal$segment))),
+                              selectInput('Proposal_creator', 
+                                          'Created by', 
+                                          unique(as.character(proposal$Created.By)),
+                                          selectize = TRUE,
+                                          multiple = FALSE),
+                              uiOutput('dateRange_pro'),
+                              br(),
                               
-                            )
-                   ),
+                              fluidRow(
+                                column(7, radioButtons("plotty_pro", "Plot Type",
+                                                       c("By day"="day","By week"="week")
+                                                       , selected="day")
+                                )
+                              ),
+                              downloadButton('downloadProposal'
+                                             ,'Download Proposal Table'))
+                            ),
+                            mainPanel(tabsetPanel(type="tab",
+                                                  tabPanel("Proposal Plots",plotOutput("ProposalPlots")),
+                                                  tabPanel("Proposal Tables",
+                                                           dataTableOutput("ProposalTable"))))),
                    tabPanel("Sales",
                             column(4, wellPanel( 
                               selectInput('segment_sale','Segment'
@@ -80,7 +124,6 @@ shinyUI(navbarPage("Sales Activity Report",
                                           selectize = TRUE),
                               uiOutput('dateRange_sale'),
                               br(),
-                              
                               fluidRow(
                                 column(7, radioButtons("plotty_sale", "Plot Type",
                                                        c("By day"="day","By week"="week")
@@ -89,26 +132,29 @@ shinyUI(navbarPage("Sales Activity Report",
                               ),
                               
                               fluidRow(
-                                column(7,
+                                column(9,
                                        h5(strong('Plot Options')),
                                        checkboxInput('avg_line_sale'
                                                      ,'Compare with average level within segment'),
+                                       checkboxInput('compare2'
+                                                     ,'Compare with other sales representatives'),
                                        downloadButton('downloadSales'
                                                       ,'Download Sales Table'))
-
                               ))
                             ),
                             mainPanel(
                               tabsetPanel(type="tab",
                                           tabPanel("SalesPlot",plotOutput("SalesPlot")),
                                           tabPanel("SalesTable",dataTableOutput("SalesTable"))
-                                          
-                                          
-                              )
-                              
-                              
-                            )
+
+                              ))
                    ),
-                   tabPanel("SummaryTable"
-                            )
+                   
+                   tabPanel("Summary",
+                            column(4,wellPanel()),
+                            mainPanel(
+                              tabsetPanel(type = "tab",
+                                          tabPanel("Highlights"),
+                                          tabPanel("Details"))
+                            ))
                    ))
