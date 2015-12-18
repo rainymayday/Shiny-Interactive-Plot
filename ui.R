@@ -156,8 +156,8 @@ shinyUI(navbarPage("Sales Activity Report",
                             column(3,wellPanel(
                               fluidRow(
                               column(7, radioButtons("reportty", "Report Type",
-                                                     c("By day"="day","By week"="week")
-                                                     , selected="day")
+                                                     c("By month"="month","By week"="week")
+                                                     , selected="week")
                               )),
                               selectInput("level","Level",choices = c("segment","sales rep")),
                               selectInput("segLevel","segment",choices = unique(as.character(sales$segment))),
@@ -167,7 +167,24 @@ shinyUI(navbarPage("Sales Activity Report",
                             )),
                             mainPanel(
                               tabsetPanel(type = "tab",
-                                          tabPanel("Highlights"),
+                                          tabPanel("Highlights",
+                                                   h2(textOutput("title")),
+                                                   br(),
+                                                   fluidRow(column(6,h3("Leads Summary")),
+                                                            column(6,h3("Contract Summary"))),
+                                                   br(),
+                                                   fluidRow(
+                                                     column(6,tableOutput("leads1")),
+                                                    column(6,tableOutput("contract1"))),
+                                                   
+                                                   fluidRow(column(6,h3("Proposal Summary")),
+                                                            column(6,h3("Sales Order Summary"))),
+                                                   br(),
+                                                   fluidRow(
+                                                     column(6,tableOutput("proposal1")),
+                                                     column(6,tableOutput("so1")))
+                                                   ),
+                                                   
                                           tabPanel("Details"))
                             ))
                    ))

@@ -86,6 +86,11 @@ shinyServer(function(input, output,session) {
      updateSelectInput(session,inputId = "Contract_creator",label = "Created by",
                        choices = unique(as.character(contract$Created.By[contract$segment == input$segment_con])))
    })
+   observe({
+     updateSelectInput(session,inputId ="RepLevel" ,label ="Sales Rep" ,
+                       choices = unique(as.character(sales$Sales.Rep.1[sales$segment == input$segLevel])))
+     
+   })
    output$dateRange <- renderUI({
      if(input$plotty == "day"){
        dateRangeInput('dateRange','Choose date range'
@@ -108,9 +113,7 @@ shinyServer(function(input, output,session) {
    })
   
   
-
-   
-   output$data <- renderTable({
+  output$data <- renderTable({
      
      inFile <- input$file1
      
@@ -122,7 +125,7 @@ shinyServer(function(input, output,session) {
    })
 
 
-   output$dateRange_sale <- renderUI({
+  output$dateRange_sale <- renderUI({
      if(input$plotty_sale == "day"){
        dateRangeInput('dateRange_sale','Choose date range'
                       ,start = as.Date("2015-11-01"), end = as.Date("2015-12-01"))
@@ -131,14 +134,14 @@ shinyServer(function(input, output,session) {
      
    })
    
-   output$dateRange_pro <- renderUI({
+  output$dateRange_pro <- renderUI({
      if(input$plotty_pro == "day"){
        dateRangeInput('dateRange_pro','Choose date range'
                       ,start = as.Date("2015-11-01"), end = as.Date("2015-12-01"))
      }
    })
 
-   output$LeadsPlot <- renderPlot({
+  output$LeadsPlot <- renderPlot({
     environment<-environment()
     data=subset(leads,trimws(Lead.Generator,"both") %in% trimws(input$LeadsGen,"both"))
     leads_sub = subset(data,as.Date(as.character(Date.Created)) >= input$dateRange[1]&as.Date(as.character(Date.Created)) <= input$dateRange[2])
@@ -183,7 +186,7 @@ shinyServer(function(input, output,session) {
   })
    
    
-   output$ProposalPlots <- renderPlot({
+  output$ProposalPlots <- renderPlot({
      environment<-environment()
      data=subset(proposal,trimws(Created.By,"both") %in% trimws(input$Proposal_creator,"both"))
      proposal_sub = subset(data
@@ -259,7 +262,36 @@ shinyServer(function(input, output,session) {
     return (p)
   })
   
-
+  output$title <- renderText(
+    if (input$reportty=="month" ){
+      if(input$level == "segment"){
+        paste(paste("Monthly Summary Report by",input$level,sep = " "),input$segLevel,sep=":")  
+      }
+      else if (input$level == "sales rep"){
+        paste(paste("Monthly Summary Report by",input$level,sep = " "),input$RepLevel,sep=":")
+        
+      }
+      
+      
+    }else if (input$reportty =="week"){
+      if(input$level == "segment"){
+        paste(paste("Weekly Summary Report by",input$level,sep = " "),input$segLevel,sep=":")  
+      }
+      else if (input$level == "sales rep"){
+        paste(paste("Weekly Summary Report by",input$level,sep = " "),input$RepLevel,sep=":")
+        
+      } 
+    }
+    
+  )
+  output$leads1<- renderTable({subset(LeadsTable,
+                                      tolower(trimws(LeadsTable$segment,"both")) == tolower(trimws(input$segLevel,"both")))})
+  output$contract1 <- renderTable({subset(contractTable,
+                                          tolower(trimws(contractTable$Segment,"both"))==tolower(trimws(input$segLevel,"both")))})
+  output$proposal1 <- renderTable({subset(ProposalTable,
+                                          tolower(trimws(ProposalTable$Segment,"both")) == tolower(trimws(input$segLevel,"both")))})
+  output$so1 <- renderTable({subset(SalesTable,
+                                    tolower(trimws(SalesTable$Segment,"both")) == tolower(trimws(input$segLevel,"both")))})
   
   output$ContractPlots <- renderPlot({
     environment<-environment()
