@@ -19,7 +19,7 @@ shinyUI(navbarPage("Sales Activity Report",
                               fileInput('file1', 'Choose File (EXCEL,TXT,CSV etc)',
                                         accept=c('text/csv', 
                                                  'text/comma-separated-values,text/plain', 
-                                                 '.csv')),
+                                                 '.csv'),multiple = TRUE),
                               tags$hr(),
                               checkboxInput('header', 'Header', TRUE),
                               radioButtons('sep', 'Separator',
@@ -157,7 +157,8 @@ shinyUI(navbarPage("Sales Activity Report",
                               fluidRow(
                               column(7, radioButtons("reportty", "Report Type",
                                                      c("By month"="month","By week"="week")
-                                                     , selected="week")
+                                                     , selected="week"),
+                                     uiOutput("selectList")
                               )),
                               selectInput("level","Level",choices = c("segment","sales rep")),
                               selectInput("segLevel","segment",choices = unique(as.character(sales$segment))),

@@ -1,10 +1,10 @@
+options(shiny.maxRequestSize=30*1024^2) 
 library(shiny)
 library(reshape2)
 library(gridExtra)
 library(ggplot2)
 library(plyr)
-library(scales)
-
+require(lubridate)
 
 load_df <- function(Rfile){
   df <- source(Rfile)
@@ -12,7 +12,6 @@ load_df <- function(Rfile){
   names(df) <- gsub("value.","",names(df))
   return (df)
 }
-
 leads <- load_df('Leads.R')
 leads$Date.Created <- as.POSIXct(as.Date(leads$Date.Created))
 leads_avg_day <- aggregate(leads$freq
@@ -24,8 +23,6 @@ leads_avg_week <- aggregate(leads$freq
                             ,by = list(leads$week,leads$segment)
                             ,FUN=mean)
 names(leads_avg_week) <- c("Date","Segment","Leads")
-
-
 sales <- load_df('SO.R')
 sales_avg_day <- aggregate(sales$Maximum.of.Amount..Net.of.Tax.
                            ,by = list(sales$Date.Created,sales$segment)
@@ -36,8 +33,6 @@ sales_avg_week <- aggregate(sales$Maximum.of.Amount..Net.of.Tax.
                             ,by = list(sales$week,sales$segment)
                             ,FUN = mean)
 names(sales_avg_week) <- c("Date","Segment","Sales Amount")
-
-
 proposal <- load_df('Proposal.R')
 contract <- load_df('Contract.R')
 
@@ -47,44 +42,35 @@ shinyServer(function(input, output,session) {
   SalesTable <- aggregate(sales$Maximum.of.Amount..Net.of.Tax.
                           ,by = list(sales$Sales.Rep.1,sales$segment),FUN = sum)
   names(SalesTable) <- c("Sale_rep","Segment","Sales_Amount")
-  
   LeadsTable <- aggregate(leads$freq,by = list(leads$Lead.Generator,leads$segment),FUN = sum)
   names(LeadsTable) <- c("Sale_rep","segment","No of Leads")
-  
   SalesTable_No <- aggregate(sales$Event.Name
                              ,by = list(sales$Sales.Rep.1,sales$segment),FUN = length)
   SalesTable$No_of_Sales <- SalesTable_No[,3]
-  
   ProposalTable <- aggregate(proposal$Amount..Net.of.Tax.,by = list(proposal$Created.By,proposal$segment),FUN = sum)
   names(ProposalTable) <- c("Created.By","Segment","Total Amount")
   ProposalTable_No <- aggregate(proposal$Amount..Net.of.Tax.,by = list(proposal$Created.By,proposal$segment),FUN = length)
   ProposalTable$No_of_Proposal <- ProposalTable_No[,3]
-  
   contractTable <- aggregate(contract$Amount..Net.of.Tax.,by = list(contract$Created.By,contract$segment),FUN = sum)
   names(contractTable) <- c("Created.By","Segment","Total Amount")
   contractTable_No <- aggregate(contract$Amount..Net.of.Tax., by = list(contract$Created.By,contract$segment),FUN=length)
   contractTable$No_Of_Contract <- contractTable_No[,3]
-
   leads1 <- reactive(
     subset(LeadsTable,
            tolower(trimws(LeadsTable$segment,"both")) == tolower(trimws(input$segLevel,"both")))
   )
-  
   contract1 <- reactive(
     subset(contractTable,
            tolower(trimws(contractTable$Segment,"both")) == tolower(trimws(input$segLevel,"both")))
   )
-  
   proposal1 <- reactive(
     subset(ProposalTable,
            tolower(trimws(ProposalTable$Segment,"both")) == tolower(trimws(input$segLevel,"both")))
   )
-  
   so1 <- reactive(
     subset(SalesTable,
            tolower(trimws(SalesTable$Segment,"both")) == tolower(trimws(input$segLevel,"both")))
   )
-  
    observe({
    updateSelectInput(session,inputId = "LeadsGen" ,label = 'Leads Generator'
                        ,choices = unique(as.character(leads$Lead.Generator[leads$segment==input$segment]))
@@ -113,7 +99,6 @@ shinyServer(function(input, output,session) {
                       ,start = as.Date("2015-11-01"), end = as.Date("2015-12-01"))
      }
    })
-   
    output$dateRange_con <- renderUI({
      if(input$plotty_con == "day"){
        dateRangeInput("dateRange_con",'Choose date range'
@@ -127,7 +112,18 @@ shinyServer(function(input, output,session) {
      }
      
    })
-  
+   output$selectList <- renderUI({
+     if (input$reportty == "week"){
+       selectInput("list",input$reportty,choices = unique(sort(week(sales$Date.Created))))  
+     }
+     else if(input$reportty == "month"){
+       selectInput("list",input$reportty,choices = unique((month(sales$Date.Created,label = TRUE,abbr = TRUE))))
+       
+     }
+       
+
+     
+   })
   output$total_leads <- renderText(
     if(input$level == "segment"){
       paste("Total Leads:",sum(leads1()$`No of Leads`),sep = " ")
@@ -137,14 +133,11 @@ shinyServer(function(input, output,session) {
       paste("Total Leads:",LeadsTable$`No of Leads`[LeadsTable$Sale_rep == input$RepLevel],sep = " ")
       
     }
-
-    
     )
   output$avgperperson_leads <- renderText(paste("--Average Level Per Person:"
                                                 ,round(mean(LeadsTable$`No of Leads`),2),sep =" "))
   output$avginSeg_leads <- renderText(paste("--Average Level within Segment:"
                                             ,round(mean(leads1()$`No of Leads`),2),sep = ""))
-  
   output$total_contracts <- renderText(
     if(input$level == "segment"){
       paste("Total Contracts sent(Amount):"
@@ -153,9 +146,7 @@ shinyServer(function(input, output,session) {
     else if(input$level == "sales rep"){
       paste("Total Contracts sent(Amount):"
             ,contractTable$`Total Amount`[contractTable$Created.By ==input$RepLevel],sep = "")
-      
     }
-    
     )
   output$total_contracts_no <- renderText(
     if(input$level == "segment"){
@@ -173,7 +164,6 @@ shinyServer(function(input, output,session) {
                                                        ,round(mean(contractTable$No_Of_Contract),2),sep = ""))
   output$avginSeg_contracts_no <-renderText(paste("--Average Number Per Person within Segment:"
                                                   ,round(mean(contract1()$No_Of_Contract),2),sep = ""))
-  
   output$total_proposals <- renderText(
     if(input$level == "segment"){
       paste("Total proposals sent(Amount):",round(sum(proposal1()$`Total Amount`),2),sep = "")  
@@ -198,7 +188,6 @@ shinyServer(function(input, output,session) {
                                                        ,round(mean(ProposalTable$No_of_Proposal),2),sep = ""))
   output$avginSeg_proposals_no <-renderText(paste("--Average Number Per Person within Segment:"
                                                   ,round(mean(proposal1()$No_of_Proposal),2),sep = ""))
-  
   output$total_SO <- renderText(
     if(input$level == "segment"){
       paste("Total SO (Amount):",round(sum(so1()$Sales_Amount),2),sep = "")  
@@ -223,18 +212,14 @@ shinyServer(function(input, output,session) {
                                                 ,round(mean(SalesTable$No_of_Sales),2),sep = ""))
   output$avginSeg_SO_no <-renderText(paste("--Average Number Per Person within Segment:"
                                            ,round(mean(so1()$No_of_Sales),2),sep = ""))
-  
   output$data <- renderTable({
-     
      inFile <- input$file1
-     
-     if (is.null(inFile))
+     if (is.null(inFile)) 
        return(NULL)
      
-     read.csv(inFile$datapath, header=input$header, sep=input$sep, 
-              quote=input$quote)
+     head(read.csv(inFile$datapath, header=input$header, sep=input$sep, 
+             quote=input$quote))
    })
-
   output$dateRange_sale <- renderUI({
      if(input$plotty_sale == "day"){
        dateRangeInput('dateRange_sale','Choose date range'
@@ -243,14 +228,12 @@ shinyServer(function(input, output,session) {
      
      
    })
-   
   output$dateRange_pro <- renderUI({
      if(input$plotty_pro == "day"){
        dateRangeInput('dateRange_pro','Choose date range'
                       ,start = as.Date("2015-11-01"), end = as.Date("2015-12-01"))
      }
    })
-
   output$LeadsPlot <- renderPlot({
     environment<-environment()
     data=subset(leads,trimws(Lead.Generator,"both") %in% trimws(input$LeadsGen,"both"))
@@ -294,8 +277,6 @@ shinyServer(function(input, output,session) {
       return(p)
  
   })
-   
-   
   output$ProposalPlots <- renderPlot({
      environment<-environment()
      data=subset(proposal,trimws(Created.By,"both") %in% trimws(input$Proposal_creator,"both"))
@@ -328,8 +309,6 @@ shinyServer(function(input, output,session) {
      return(p)
      
    })
-   
-  
   output$SalesPlot <- renderPlot({
     environment<-environment()
     sales = subset(sales,as.Date(as.character(Date.Created)) >= input$dateRange_sale[1]&as.Date(as.character(Date.Created)) <= input$dateRange[2])
@@ -371,7 +350,6 @@ shinyServer(function(input, output,session) {
        theme(axis.text.x = element_text(angle = 45, hjust = 1))
     return (p)
   })
-  
   output$title <- renderText(
     if (input$reportty=="month" ){
       if(input$level == "segment"){
@@ -392,7 +370,6 @@ shinyServer(function(input, output,session) {
         
       } 
     }
-    
   )
   output$leads1<- renderTable({
     data <- leads1()
@@ -406,7 +383,6 @@ shinyServer(function(input, output,session) {
   output$so1 <- renderTable({
     so1()
   })
-  
   output$ContractPlots <- renderPlot({
     environment<-environment()
     data=subset(contract,trimws(Created.By,"both") %in% trimws(input$Contract_creator,"both"))
@@ -440,23 +416,16 @@ shinyServer(function(input, output,session) {
       theme(axis.text.x = element_text(angle = 45, hjust = 1))
     return(p)
   })
-
-  
   output$LeadsTable <- renderDataTable({
     LeadsTable
  })
-
   output$SalesTable <- renderDataTable({
     SalesTable
   })
-  
   output$ProposalTable <- renderDataTable({
     ProposalTable
   })
   output$ContractTable <- renderTable(contractTable)
-  
-
-  
   output$downloadSales <- downloadHandler(
     filename = function(){
       paste('sales','.csv',sep='')
@@ -473,7 +442,6 @@ shinyServer(function(input, output,session) {
       write.csv(LeadsTable,file)
     }
   )
-  
   output$downloadProposal <- downloadHandler(
     filename = function(){
       paste('Proposal','.csv',sep='')
@@ -482,7 +450,6 @@ shinyServer(function(input, output,session) {
       write.csv(ProposalTable,file)
     }
   )
-  
   output$downloadContract <- downloadHandler(
     filename = function(){
       paste('Contract','.csv',sep='')
@@ -490,7 +457,5 @@ shinyServer(function(input, output,session) {
     content = function(file){
       write.csv(contractTable,file)
     }
-    
   )
-  
  })
