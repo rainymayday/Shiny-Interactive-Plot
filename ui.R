@@ -1,26 +1,28 @@
 library(shiny)
 library(dygraphs)
-
-load_df <- function(Rfile){
-  df <- source(Rfile)
-  df <- as.data.frame(df[1])
-  names(df) <- gsub("value.","",names(df))
-  return (df)
-}
-
-leads <- load_df('Leads.R')
-sales <- load_df('SO.R')
-proposal <- load_df('Proposal.R')
-contract <- load_df('Contract.R')
-
 shinyUI(navbarPage("Sales Activity Report",
                    tabPanel("Upload Data File For Analysis",
                             column(3, wellPanel(
-                              fileInput('file1', 'Choose File (EXCEL,TXT,CSV etc)',
+                              fileInput('file0', 'Upload sales_rep table',
                                         accept=c('text/csv', 
                                                  'text/comma-separated-values,text/plain', 
-                                                 '.csv'),multiple = TRUE),
-                              tags$hr(),
+                                                 '.csv'),multiple = FALSE),
+                              fileInput('file1', 'Upload leads table',
+                                        accept=c('text/csv', 
+                                                 'text/comma-separated-values,text/plain', 
+                                                 '.csv'),multiple = FALSE),
+                              fileInput('file2', 'Upload sales order table ',
+                                        accept=c('text/csv', 
+                                                 'text/comma-separated-values,text/plain', 
+                                                 '.csv'),multiple = FALSE),
+                              fileInput('file3', 'Upload contract table ',
+                                        accept=c('text/csv', 
+                                                 'text/comma-separated-values,text/plain', 
+                                                 '.csv'),multiple = FALSE),
+                              fileInput('file4', 'Upload prposal table ',
+                                        accept=c('text/csv', 
+                                                 'text/comma-separated-values,text/plain', 
+                                                 '.csv'),multiple = FALSE),
                               checkboxInput('header', 'Header', TRUE),
                               radioButtons('sep', 'Separator',
                                            c(Comma=',',
@@ -32,19 +34,23 @@ shinyUI(navbarPage("Sales Activity Report",
                                              'Double Quote'='"',
                                              'Single Quote'="'"),
                                            '"')
-                            )),
-                            mainPanel(
-                              tableOutput('data')
-                            )
+                              )
                             ),
+                            mainPanel(
+                              tabsetPanel(
+                                type = "tab",
+                                tabPanel("Sales_Rep",tableOutput('salesperson')),
+                                tabPanel("Leads",tableOutput('leads')),
+                                tabPanel("contract",tableOutput("contact")),
+                                tabPanel("Proposal",tableOutput("proposal")),
+                                tabPanel("SalesOrder",tableOutput("sales"))
+                              )
+                            )),
+                            
                    tabPanel("Leads",
-                            column(4, wellPanel( 
-                              selectInput('segment', 'Segment',  unique(as.character(leads$segment))),
-                              selectInput('LeadsGen', 
-                                          'Leads Generator', 
-                                          unique(as.character(leads$Lead.Generator)),
-                                          selectize = TRUE,
-                                          multiple = FALSE),
+                            column(3, wellPanel(
+                              uiOutput('segment'),
+                              uiOutput('LeadsGen'),
                               uiOutput('dateRange'),
                               br(),
                               fluidRow(
@@ -54,12 +60,12 @@ shinyUI(navbarPage("Sales Activity Report",
                                 )
                               ),
                               
-                                fluidRow(
-                                  column(9,h5(strong('Plot Options')),
-                                         checkboxInput('avg_line','Compare with average level'),
-                                         checkboxInput('compare'
-                                                       ,'Compare with other sales representatives'),
-                                         downloadButton('downloadLeads','Download Leads Table'))
+                              fluidRow(
+                                column(9,h5(strong('Plot Options')),
+                                       checkboxInput('avg_line','Compare with average level'),
+                                       checkboxInput('compare'
+                                                     ,'Compare with other sales representatives'),
+                                       downloadButton('downloadLeads','Download Leads Table'))
                               ))
                             ),
                             mainPanel(
@@ -68,12 +74,8 @@ shinyUI(navbarPage("Sales Activity Report",
                                           tabPanel("LeadsTable",dataTableOutput("LeadsTable"))))),
                    tabPanel("Contract",
                             column(4,wellPanel(
-                              selectInput('segment_con', 'Segment',  unique(as.character(contract$segment))),
-                              selectInput('Contract_creator', 
-                                          'Created by', 
-                                          unique(as.character(contract$Created.By)),
-                                          selectize = TRUE,
-                                          multiple = FALSE),
+                              uiOutput("segment_con"),
+                              uiOutput("Contract_creator"),
                               uiOutput('dateRange_con'),
                               br(),
                               
@@ -90,19 +92,14 @@ shinyUI(navbarPage("Sales Activity Report",
                               tabsetPanel(type = "tab",
                                           tabPanel("Contract Plots",plotOutput("ContractPlots")),
                                           tabPanel("Contract Tables",tableOutput("ContractTable")))  
-                            
+                              
                             )),
                    tabPanel("Proposal",
                             column(4,wellPanel(
-                              selectInput('segment_pro', 'Segment',  unique(as.character(proposal$segment))),
-                              selectInput('Proposal_creator', 
-                                          'Created by', 
-                                          unique(as.character(proposal$Created.By)),
-                                          selectize = TRUE,
-                                          multiple = FALSE),
+                              uiOutput("segment_pro"),
+                              uiOutput("Proposal_creator"),
                               uiOutput('dateRange_pro'),
                               br(),
-                              
                               fluidRow(
                                 column(7, radioButtons("plotty_pro", "Plot Type",
                                                        c("By day"="day","By week"="week")
@@ -116,14 +113,11 @@ shinyUI(navbarPage("Sales Activity Report",
                                                   tabPanel("Proposal Plots",plotOutput("ProposalPlots")),
                                                   tabPanel("Proposal Tables",
                                                            dataTableOutput("ProposalTable"))))),
-                   tabPanel("Sales",
-                            column(4, wellPanel( 
-                              selectInput('segment_sale','Segment'
-                                          ,unique(as.character(sales$segment))),
-                              selectInput('sales_rep', 
-                                          'Sales Representative', 
-                                          unique(as.character(sales$Sales.Rep.1)),
-                                          selectize = TRUE),
+                   
+                   tabPanel("Sales Order",
+                            column(4, wellPanel(
+                              uiOutput("segment_sale"),
+                              uiOutput("sales_rep"),
                               uiOutput('dateRange_sale'),
                               br(),
                               fluidRow(
@@ -148,20 +142,23 @@ shinyUI(navbarPage("Sales Activity Report",
                               tabsetPanel(type="tab",
                                           tabPanel("SalesPlot",plotOutput("SalesPlot")),
                                           tabPanel("SalesTable",dataTableOutput("SalesTable"))
-
+                                          
                               ))
-                   ),
-                   
+                            
+                            ),
+                  
                    tabPanel("Summary",
                             column(3,wellPanel(
                               fluidRow(
-                              column(7, radioButtons("reportty", "Report Type",
-                                                     c("By month"="month","By week"="week")
-                                                     , selected="week"),
-                                     uiOutput("selectList")
-                              )),
+                                column(7, radioButtons("reportty", "Report Type",
+                                                       c("By month"="month","By week"="week")
+                                                       , selected="week"),
+                                       uiOutput("selectList")
+                                )),
                               selectInput("level","Level",choices = c("segment","sales rep")),
-                              selectInput("segLevel","segment",choices = unique(as.character(sales$segment))),
+                              #,
+                              #,
+                              uiOutput("segLevel"),
                               uiOutput("RepLevel"),
                               downloadButton("downloadReport","Export Report")
                               
@@ -172,22 +169,22 @@ shinyUI(navbarPage("Sales Activity Report",
                                                    h2(textOutput("title")),
                                                    br(),
                                                    fluidRow(
-                                                   column(6,h3("Leads Summary"),
-                                                           #tableOutput("leads1"),
-                                                           textOutput("total_leads"),
-                                                           textOutput("avgperperson_leads"),
-                                                           textOutput("avginSeg_leads")),
-                                                   column(6,h3("Contract Summary"),
-                                                           #tableOutput("contract1"),
-                                                           textOutput("total_contracts"),
-                                                           textOutput("avgperperson_contracts"),
-                                                           textOutput("avginSeg_contracts"),
-                                                           br(),
-                                                           textOutput("total_contracts_no"),
-                                                           textOutput("avgperperson_contracts_no"),
-                                                           textOutput("avginSeg_contracts_no")
-                                                           
-                                                           )),
+                                                     column(6,h3("Leads Summary"),
+                                                            #tableOutput("leads1"),
+                                                            textOutput("total_leads"),
+                                                            textOutput("avgperperson_leads"),
+                                                            textOutput("avginSeg_leads")),
+                                                     column(6,h3("Contract Summary"),
+                                                            #tableOutput("contract1"),
+                                                            textOutput("total_contracts"),
+                                                            textOutput("avgperperson_contracts"),
+                                                            textOutput("avginSeg_contracts"),
+                                                            br(),
+                                                            textOutput("total_contracts_no"),
+                                                            textOutput("avgperperson_contracts_no"),
+                                                            textOutput("avginSeg_contracts_no")
+                                                            
+                                                     )),
                                                    fluidRow(
                                                      column(6,h3("Proposal Summary"),
                                                             #tableOutput("proposal1"),
@@ -198,7 +195,7 @@ shinyUI(navbarPage("Sales Activity Report",
                                                             textOutput("total_proposals_no"),
                                                             textOutput("avgperperson_proposals_no"),
                                                             textOutput("avginSeg_proposals_no")),
-                                                            column(6,h3("Sales Order Summary"),
+                                                     column(6,h3("Sales Order Summary"),
                                                             #tableOutput("so1"),
                                                             textOutput("total_SO"),
                                                             textOutput("avgperperson_SO"),
@@ -207,9 +204,10 @@ shinyUI(navbarPage("Sales Activity Report",
                                                             textOutput("total_SO_no"),
                                                             textOutput("avgperperson_SO_no"),
                                                             textOutput("avginSeg_SO_no")
-                                                                   ))
-                                                   ),
-                                                   
+                                                     ))
+                                          ),
+                                          
                                           tabPanel("Details"))
                             ))
-                   ))
+                            ))
+                
