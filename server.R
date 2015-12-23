@@ -66,6 +66,8 @@ shinyServer(function(input, output,session) {
       sales <- merge(sales, salesrep(),by.x= "Sales.Rep.1",by.y = "sale_rep")
       sales$Date.Created <- as.character(as.Date(sales$Date.Created, "%d/%m/%Y"))
       sales$week <- week(sales$Date.Created)
+      sales$month <- month(sales$Date.Created,label = TRUE)
+      sales$year <- year(sales$Date.Created)
     })
     return(sales)
   })
@@ -100,9 +102,12 @@ shinyServer(function(input, output,session) {
                 ,"Amount..Net.of.Tax.")
       proposal <- proposal[,cols]
       proposal$Amount..Net.of.Tax. <- factor2numeric(proposal$Amount..Net.of.Tax.)
-      proposal <- subset(proposal,proposal$Created.By %in% as.character(sales_rep$sale_rep))
+      proposal <- subset(proposal,proposal$Created.By %in% as.character(salesrep()$sale_rep))
       proposal$Date.Created <- as.character(as.Date(proposal$Date.Created, "%d/%m/%Y"))
       proposal <- merge(proposal, salesrep(),by.x= "Created.By",by.y = "sale_rep")
+      proposal$week <- week(proposal$Date.Created)
+      proposal$month <- month(proposal$Date.Created,label = TRUE)
+      proposal$year <- year(proposal$Date.Created)
     })
     return (proposal)
     
