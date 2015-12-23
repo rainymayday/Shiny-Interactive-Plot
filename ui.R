@@ -52,6 +52,7 @@ shinyUI(navbarPage("Sales Activity Report",
                               uiOutput('segment'),
                               uiOutput('LeadsGen'),
                               uiOutput('dateRange'),
+                              uiOutput("year"),
                               br(),
                               fluidRow(
                                 column(7, radioButtons("plotty", "Plot Type",
@@ -61,10 +62,9 @@ shinyUI(navbarPage("Sales Activity Report",
                               ),
                               
                               fluidRow(
-                                column(9,h5(strong('Plot Options')),
+                                column(12,h5(strong('Plot Options')),
                                        checkboxInput('avg_line','Compare with average level'),
-                                       checkboxInput('compare'
-                                                     ,'Compare with other sales representatives'),
+                                       checkboxInput("avg_self","Compare with self average level"),
                                        downloadButton('downloadLeads','Download Leads Table'))
                               ))
                             ),
