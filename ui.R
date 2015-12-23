@@ -1,5 +1,4 @@
 library(shiny)
-library(dygraphs)
 shinyUI(navbarPage("Sales Activity Report",
                    tabPanel("Upload Data File For Analysis",
                             column(3, wellPanel(
@@ -56,7 +55,7 @@ shinyUI(navbarPage("Sales Activity Report",
                               br(),
                               fluidRow(
                                 column(7, radioButtons("plotty", "Plot Type",
-                                                       c("By day"="day","By week"="week")
+                                                       c("By day"="day","By week"="week","By month"="month")
                                                        , selected="day")
                                 )
                               ),

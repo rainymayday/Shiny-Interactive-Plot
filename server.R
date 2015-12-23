@@ -190,7 +190,7 @@ shinyServer(function(input, output,session) {
     }
   })
   output$year <- renderUI({
-    if(input$plotty =="week"){
+    if(input$plotty =="week"||input$plotty == "month"){
       selectInput("year","Choose the year you want:",choices = leads()$year)
     }
   })
@@ -304,6 +304,15 @@ shinyServer(function(input, output,session) {
     return(leads_avg_week)
     
   })
+  leads_avg_month <- reactive({
+    leads_avg_month <- aggregate(leads()$freq,
+                                 by = list(leads()$year,leads()$month,leads()$segment),
+                                 FUN = sum)
+    names(leads_avg_month) <- c("Year","Date","Segment","Leads")
+    leads_avg_month$Leads[leads_avg_month$Segment == "confex"] <- leads_avg_month$Leads[leads_avg_month$Segment == "confex"]/num_confex()
+    leads_avg_month$Leads[leads_avg_month$Segment == "corporate"] <- leads_avg_month$Leads[leads_avg_month$Segment == "corporate"]/num_corporate()
+    return(leads_avg_month)
+  })
   sales_avg_day <- reactive({
     sales_avg_day <- aggregate(sales()$Maximum.of.Amount..Net.of.Tax.
                                ,by = list(sales()$Date.Created,sales()$segment)
@@ -330,6 +339,10 @@ shinyServer(function(input, output,session) {
       df <- aggregate(df$freq,by = list(df$year,df$Date.Created,df$Lead.Generator),FUN= sum)
       names(df) <- c("Year","Date","Lead.Generator","Leads")
     }
+    else if (input$plotty == "month"){
+      df <- aggregate(df$freq,by = list(df$year,df$month,df$Lead.Generator),FUN = sum)
+      names(df) <- c("Year","Month","Lead.Generator","Leads")
+    }
     return(df)
   })
 
@@ -338,9 +351,15 @@ shinyServer(function(input, output,session) {
     
     data <-subset(leads(),trimws(Lead.Generator,"both") %in% trimws(input$LeadsGen,"both"))
     leads_sub <- subset(data,as.Date(as.character(Date.Created)) >= input$dateRange[1]&as.Date(as.character(Date.Created)) <= input$dateRange[2])
+    
     data.week <- aggregate(data$freq, by = list(data$year,data$week),FUN = sum)
     names(data.week) <- c("year","week","leads")
     data.week <- subset(data.week,trimws(data.week$year,"both") == trimws(input$year,"both"))
+    
+    data.month <- aggregate(data$freq, by = list(data$year,data$month),FUN = sum)
+    names(data.month) <- c("year","month","leads")
+    data.month <- subset(data.month,trimws(data.month$year,"both") == trimws(input$year,"both"))
+    
 
     leads_avg_day <- subset(leads_avg_day(),trimws(Segment,"both") == trimws(input$segment,"both") )
     leads_avg_day <- subset(leads_avg_day
@@ -348,6 +367,9 @@ shinyServer(function(input, output,session) {
     
     leads_avg_week <- subset(leads_avg_week(),trimws(Segment,"both") ==trimws(input$segment,"both"))
     leads_avg_week <- subset(leads_avg_week,leads_avg_week$Year == input$year)
+    
+    leads_avg_month <- subset(leads_avg_month(),trimws(Segment,"both") ==trimws(input$segment,"both"))
+    leads_avg_month <- subset(leads_avg_month,leads_avg_month$Year == input$year)
     #leads_avg_rep <- subset(leads_avg_rep(),leads_avg_rep()$Year == input$year)
     avg_self = mean(leads_avg_rep()$Leads)
     switch(input$plotty,
@@ -364,6 +386,13 @@ shinyServer(function(input, output,session) {
              xlabtxt = "Day"
              avg = leads_avg_day
              plotty = geom_line(aesthetics1,data = leads_data,size = 1.2,colour = "#00CCCC")
+           },
+           "month" = {
+             aesthetics1 = aes(x=data.month[,2], y=data.month[,3])
+             leads_data = data.month
+             xlabtxt = "month"
+             avg = leads_avg_month
+             plotty= geom_bar(size = 1.2,fill= "#00CCCC",stat="identity")
            }
     )
     p <- ggplot(data = leads_data,mapping = aesthetics1)+
