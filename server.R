@@ -82,6 +82,9 @@ shinyServer(function(input, output,session) {
       contract$Amount..Net.of.Tax. <- factor2numeric(contract$Amount..Net.of.Tax.)
       contract$Date.Created <- as.character(as.Date(contract$Date.Created, "%d/%m/%Y"))
       contract <- merge(contract, salesrep(),by.x= "Created.By",by.y = "sale_rep")
+      contract$week <- week(contract$Date.Created)
+      contract$month <-month(contract$Date.Created,label = TRUE)
+      contract$year <- year(contract$Date.Created)
     })
     return (contract)
   })
@@ -216,6 +219,11 @@ shinyServer(function(input, output,session) {
     if(input$plotty_con == "day"){
       dateRangeInput("dateRange_con",'Choose date range'
                      ,start = as.Date("2015-11-01"), end = as.Date("2015-12-01"))
+    }
+  })
+  output$year_con <- renderUI({
+    if(input$plotty_con == "week"||input$plotty_con == "month"){
+      selectInput("year_con","Choose the year you want to see:",choices = contract()$year)
     }
   })
   output$segment_pro <- renderUI({
@@ -454,17 +462,37 @@ shinyServer(function(input, output,session) {
   output$ContractPlots <- renderPlot({
     data=subset(contract(),trimws(Created.By,"both") %in% trimws(input$Contract_creator,"both"))
     contract_sub = subset(data,as.Date(as.character(Date.Created))>= input$dateRange_con[1]&as.Date(as.character(Date.Created)) <= input$dateRange_con[2])
-    contract_sub$week <- week(contract_sub$Date.Created)
-    contract.week <- aggregate(contract_sub$Amount..Net.of.Tax., by = list(contract_sub$week),FUN = sum)
-    contract.day <- aggregate(contract_sub$Amount..Net.of.Tax.,by = list(contract_sub$Date.Created),FUN=sum)
-    names(contract.day) <- c("Date","Amount")
+    
+    contract.week <- aggregate(data$Amount..Net.of.Tax.,
+                               by = list(data$year,data$week),
+                               FUN = sum)
+    names(contract.week) <- c("year","week","amount")
+    contract.week <- subset(contract.week,contract.week$year == input$year_con)
+    
+    contract.day <- aggregate(contract_sub$Amount..Net.of.Tax.,
+                              by = list(contract_sub$year,contract_sub$Date.Created),
+                              FUN=sum)
+    names(contract.day) <- c("year","day","amount")
+    contract.week <- subset(contract.week,contract.week$year == input$year_con)
+    
+    contract.month <- aggregate(data$Amount..Net.of.Tax.,
+                                by = list(data$year,data$month),
+                                FUN = sum)
+    names(contract.month) <- c("year","month","amount")
+    contract.month <- subset(contract.month,contract.month$year == input$year_con)
+    
     switch(input$plotty_con,
-           "week" = {aesthetics1 = aes(x=contract.week[,1], y=contract.week[,2],group = "week")
+           "month" = {aesthetics1 = aes(x=contract.month[,2], y=contract.month[,3],group = "week")
+           pro_data = contract.month
+           xlabtxt = "Month"
+           plotty= geom_bar(size = 1.2,fill= "#00CCCC",stat="identity")
+           },
+           "week" = {aesthetics1 = aes(x=contract.week[,2], y=contract.week[,3],group = "week")
            pro_data = contract.week
            xlabtxt = "Week"
            plotty= geom_bar(size = 1.2,fill= "#00CCCC",stat="identity")},
            "day"  = {
-             aesthetics1 = aes(x=contract.day[,1], y=contract.day[,2],group = "day")
+             aesthetics1 = aes(x=contract.day[,2], y=contract.day[,3],group = "day")
              pro_data = contract.day
              xlabtxt = "Day"
              plotty = geom_line(aesthetics1,data = contract.day,size = 1.2,colour = "#00CCCC")
@@ -472,7 +500,7 @@ shinyServer(function(input, output,session) {
     p <- ggplot(data = pro_data,mapping = aesthetics1)+
       plotty+
       geom_point(size = 1.5)+
-      ggtitle(paste("Contract Created by",input$Proposal_creator))+
+      ggtitle(paste("Contract Created by",input$Contract_creator))+
       xlab(xlabtxt)+
       ylab("Total Amount")+
       theme_bw()+

@@ -72,15 +72,16 @@ shinyUI(navbarPage("Sales Activity Report",
                                           tabPanel("LeadsPlot",plotOutput("LeadsPlot")),
                                           tabPanel("LeadsTable",dataTableOutput("LeadsTable"))))),
                    tabPanel("Contract",
-                            column(4,wellPanel(
+                            column(3,wellPanel(
                               uiOutput("segment_con"),
                               uiOutput("Contract_creator"),
                               uiOutput('dateRange_con'),
+                              uiOutput("year_con"),
                               br(),
                               
                               fluidRow(
                                 column(7, radioButtons("plotty_con", "Plot Type",
-                                                       c("By day"="day","By week"="week")
+                                                       c("By day"="day","By week"="week","By month"="month")
                                                        , selected="day")
                                 )
                               ),
