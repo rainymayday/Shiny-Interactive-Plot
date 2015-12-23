@@ -8,12 +8,11 @@ require(lubridate)
 factor2numeric <- function(x){
   x.new <- as.numeric(gsub(",","",as.character(x)))
   return (x.new)
-  
 }
 
 
 shinyServer(function(input, output,session) {
-  
+  # import data frame from uploaded csv
   salesrep <- reactive({
     
     infile <- input$file0
@@ -22,6 +21,14 @@ shinyServer(function(input, output,session) {
     }
     df <- read.csv(infile$datapath)
     return(df)
+  })
+  num_confex <- reactive({
+    num_confex <- length(salesrep()$sale_rep[salesrep()$segment=="confex"])
+    return(num_confex)
+  })
+  num_corporate <- reactive({
+    num_corporate <-length(salesrep()$sale_rep[salesrep()$segment=="corporate"])
+    return(num_corporate)
   })
   leads <- reactive({
     infile <- input$file1
@@ -97,6 +104,8 @@ shinyServer(function(input, output,session) {
     return (proposal)
     
   })
+  
+  # generate summary tables
   LeadsTable <- reactive({
     LeadsTable <- aggregate(leads()$freq,by = list(leads()$Lead.Generator,leads()$segment),FUN = sum)
     names(LeadsTable) <- c("Sale_rep","segment","No of Leads")
@@ -127,6 +136,8 @@ shinyServer(function(input, output,session) {
     ProposalTable$No_of_Proposal <- ProposalTable_No[,3]
     return(ProposalTable)
   })
+  
+  # datasets for summary part
   leads1 <- reactive({
     leads1 <-subset(LeadsTable(),
            tolower(trimws(LeadsTable()$segment,"both")) == tolower(trimws(input$segLevel,"both")))
@@ -148,6 +159,7 @@ shinyServer(function(input, output,session) {
       return(so1)
     })
   
+  # show tables in the beginning, for users to check the correctness of the table
   output$salesperson <- renderTable({
     salesrep()
   })
@@ -163,7 +175,8 @@ shinyServer(function(input, output,session) {
   output$proposal <- renderTable({
     proposal()
   })
-
+  
+  # reactive UI
   output$segment <- renderUI({
     selectInput("segment","Segment",choices = as.character(salesrep()$segment))
   })
@@ -230,6 +243,7 @@ shinyServer(function(input, output,session) {
     
   })
   
+  # show tables in each module
   output$LeadsTable <- renderDataTable({
     LeadsTable()
   })
@@ -243,6 +257,7 @@ shinyServer(function(input, output,session) {
     ProposalTable()
   })
   
+  # update sales rep based on selected segment
   observe({
     updateSelectInput(session,inputId = "LeadsGen" ,label = 'Leads Generator',
                       choices = as.character(salesrep()$sale_rep[salesrep()$segment==input$segment]))
@@ -264,19 +279,23 @@ shinyServer(function(input, output,session) {
     
   })
   
-  
+  # calculate avg level within segment for comparison
   leads_avg_day <- reactive({
-    df <- aggregate(leads()$freq
-              ,by = list(leads()$Date.Created,leads()$segment)
-              ,FUN = mean)
-    names(df) <- c("Date","Segment","Leads")
+    df <- aggregate(leads()$freq,
+                    by = list(leads()$year,leads()$Date.Created,leads()$segment),
+                    FUN = sum)
+    names(df) <- c("Year","Date","Segment","Leads")
+    df$Leads[df$Segment == "confex"] <- df$Leads[df$Segment == "confex"]/num_confex()
+    df$Leads[df$Segment == "corporate"] <- df$Leads[df$Segment == "corporate"]/num_corporate()
     return(df)
   })
   leads_avg_week <- reactive({
     leads_avg_week <- aggregate(leads()$freq
-              ,by = list(leads()$week,leads()$segment)
-              ,FUN=mean)
-    names(leads_avg_week) <- c("Date","Segment","Leads")
+              ,by = list(leads()$year,leads()$week,leads()$segment)
+              ,FUN=sum)
+    names(leads_avg_week) <- c("Year","Date","Segment","Leads")
+    leads_avg_week$Leads[leads_avg_week$Segment == "confex"] <- leads_avg_week$Leads[leads_avg_week$Segment == "confex"]/num_confex()
+    leads_avg_week$Leads[leads_avg_week$Segment == "corporate"] <- leads_avg_week$Leads[leads_avg_week$Segment == "corporate"]/num_corporate()
     return(leads_avg_week)
     
   })
@@ -295,6 +314,7 @@ shinyServer(function(input, output,session) {
     return(sales_avg_week)
   })
   
+  # show plots in each module
   output$LeadsPlot <- renderPlot({
     data=subset(leads(),trimws(Lead.Generator,"both") %in% trimws(input$LeadsGen,"both"))
     leads_sub = subset(data,as.Date(as.character(Date.Created)) >= input$dateRange[1]&as.Date(as.character(Date.Created)) <= input$dateRange[2])
@@ -427,10 +447,12 @@ shinyServer(function(input, output,session) {
       theme(axis.text.x = element_text(angle = 45, hjust = 1))
     return(p)
   })
+  
+  # Title in the summary part
   output$title <- renderText(
     if (input$reportty=="month" ){
       if(input$level == "segment"){
-        paste(paste("Monthly Summary Report by",input$level,sep = " "),input$segLevel,sep=":")  
+        paste(paste("Summary Report by",input$level,sep = " "),input$segLevel,sep=":")  
       }
       else if (input$level == "sales rep"){
         paste(paste("Monthly Summary Report by",input$level,sep = " "),input$RepLevel,sep=":")
@@ -527,15 +549,14 @@ shinyServer(function(input, output,session) {
   )
   output$avgperperson_SO <- renderText(paste("--Average Amount Per Person:"
                                              ,round(mean(SalesTable()$Sales_Amount),2),sep=""))
-  #bugggg++++++++++++++++++++++++++++
   output$avginSeg_SO <- renderText(paste("--Average Amount within Segment:"
                                          ,round(mean(so1()$Sales_Amount),2),sep = ""))
   output$avgperperson_SO_no <- renderText(paste("--Average Number Per Person:"
                                                 ,round(mean(SalesTable()$No_of_Sales),2),sep = ""))
-  #bugggg++++++++++++++++++++++++++++
   output$avginSeg_SO_no <-renderText(paste("--Average Number Per Person within Segment:"
-                                           ,round(mean(so1()$No_of_Sales),2),sep = ""))  
-  # download tables
+                                           ,round(mean(so1()$No_of_Sales),2),sep = "")) 
+  
+  # download all the tables
   output$downloadLeads <- downloadHandler(
     filename = function(){
       paste('Leads','.csv',sep='')
