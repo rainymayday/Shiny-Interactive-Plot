@@ -32,9 +32,12 @@ shinyServer(function(input, output,session) {
       {
         leads <- read.csv(infile$datapath)
         leads$Date.Created <- as.character(as.Date(leads$Date.Created, "%d/%m/%Y"))
+        leads <- merge(leads, salesrep(),by.x= "Lead.Generator",by.y = "sale_rep")
         leads_date_generator <- count(leads,c("Date.Created","Lead.Generator","segment"))
         leads_date_generator$Lead.Generator <- as.factor(leads_date_generator$Lead.Generator)
         leads_date_generator$week <- week(leads_date_generator$Date.Created)
+        leads_date_generator$month <- month(leads_date_generator$Date.Created,label=TRUE)
+        leads_date_generator$year <- year(leads_date_generator$Date.Created)
       }
     )
     return(leads_date_generator)
