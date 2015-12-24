@@ -57,11 +57,9 @@ shinyServer(function(input, output,session) {
     isolate({
       sales <- read.csv(infile$datapath)
       sales <- subset(sales,sales$Sales.Rep.1 %in% as.character(salesrep()$sale_rep))
-      col <- c("Date.Created","Name","Sales.Rep.1","Status","Event.Name"
-               ,"Maximum.of.Amount","Maximum.of.Amount..Net.of.Tax."
-               ,"Opp...Event.Start.Date","Opp...Event.End.Date")
+      col <- c("Date.Created","Name","Sales.Rep.1","Event.Name"
+               ,"Maximum.of.Amount..Net.of.Tax.")
       sales <- sales[,col]
-      sales$Maximum.of.Amount <- factor2numeric(sales$Maximum.of.Amount)
       sales$Maximum.of.Amount..Net.of.Tax. <- factor2numeric(sales$Maximum.of.Amount..Net.of.Tax.)
       sales <- merge(sales, salesrep(),by.x= "Sales.Rep.1",by.y = "sale_rep")
       sales$Date.Created <- as.character(as.Date(sales$Date.Created, "%d/%m/%Y"))
@@ -202,6 +200,7 @@ shinyServer(function(input, output,session) {
       selectInput("year","Choose the year you want:",choices = leads()$year)
     }
   })
+  
   output$segment_sale <- renderUI({
     selectInput('segment_sale','Segment',choices = as.character(salesrep()$segment))
   })
@@ -214,6 +213,13 @@ shinyServer(function(input, output,session) {
                      ,start = as.Date("2015-11-01"), end = as.Date("2015-12-01"))
     }
   })
+  output$year_sale <- renderUI({
+    if(input$plotty_sale == "week"||input$plotty_sale == "month"){
+      selectInput("year_sale","Choose the year you want:",choices = sales()$year)
+    }
+    
+  })
+  
   output$segment_con <- renderUI({
     selectInput('segment_con', 'Segment',  choices = as.character(salesrep()$segment))
   })
@@ -231,6 +237,7 @@ shinyServer(function(input, output,session) {
       selectInput("year_con","Choose the year you want to see:",choices = contract()$year)
     }
   })
+  
   output$segment_pro <- renderUI({
     selectInput('segment_pro', 'Segment',  as.character(salesrep()$segment))
   })
@@ -243,6 +250,12 @@ shinyServer(function(input, output,session) {
                      ,start = as.Date("2015-11-01"), end = as.Date("2015-12-01"))
     }
   })
+  output$year_pro <- renderUI({
+    if(input$plotty_pro =="week"||input$plotty_pro == "month"){
+      selectInput("year_pro","Choose the year you want:",choices = proposal()$year)
+    }
+  })
+  
   output$selectList <- renderUI({
     if (input$reportty == "week"){
       selectInput("list",input$reportty,choices = unique(sort(week(sales()$Date.Created))))  
@@ -328,17 +341,30 @@ shinyServer(function(input, output,session) {
   })
   sales_avg_day <- reactive({
     sales_avg_day <- aggregate(sales()$Maximum.of.Amount..Net.of.Tax.
-                               ,by = list(sales()$Date.Created,sales()$segment)
-                               ,FUN = mean)
-    names(sales_avg_day) <- c("Date","Segment","Sales Amount")
+                               ,by = list(sales()$year,sales()$Date.Created,sales()$segment)
+                               ,FUN = sum)
+    names(sales_avg_day) <- c("Year","Date","Segment","Sales Amount")
+    sales_avg_day$`Sales Amount`[sales_avg_day$Segment == "confex"] <- sales_avg_day$`Sales Amount`[sales_avg_day$Segment == "confex"]/num_confex()
+    sales_avg_day$`Sales Amount`[sales_avg_day$Segment == "corporate"] <- sales_avg_day$`Sales Amount`[sales_avg_day$Segment == "corporate"]/num_corporate()
     return (sales_avg_day)
   })
   sales_avg_week <- reactive({
     sales_avg_week <- aggregate(sales()$Maximum.of.Amount..Net.of.Tax.
-                                ,by = list(sales()$week,sales()$segment)
-                                ,FUN = mean)
-    names(sales_avg_week) <- c("Date","Segment","Sales Amount")
+                                ,by = list(sales()$year,sales()$week,sales()$segment)
+                                ,FUN = sum)
+    names(sales_avg_week) <- c("Year","Date","Segment","Sales Amount")
+    sales_avg_week$`Sales Amount`[sales_avg_week$Segment == "confex"] <- sales_avg_week$`Sales Amount`[sales_avg_week$Segment == "confex"]/num_confex()
+    sales_avg_week$`Sales Amount`[sales_avg_week$Segment == "corporate"] <- sales_avg_week$`Sales Amount`[sales_avg_week$Segment == "corporate"]/num_corporate()
     return(sales_avg_week)
+  })
+  sales_avg_month <- reactive({
+    df <- aggregate(sales()$Maximum.of.Amount..Net.of.Tax.
+                    ,by = list(sales()$year,sales()$month,sales()$segment)
+                    ,FUN = sum)
+    names(df) <- c("Year","Date","Segment","Sales Amount")
+    df$`Sales Amount`[df$Segment == "confex"] <- df$`Sales Amount`[df$Segment == "confex"]/num_confex()
+    df$`Sales Amount`[df$Segment == "corporate"] <- df$`Sales Amount`[df$Segment == "corporate"]/num_corporate()
+    return(df)
   })
   
   # calculate avg level by now
@@ -357,6 +383,24 @@ shinyServer(function(input, output,session) {
       names(df) <- c("Year","Month","Lead.Generator","Leads")
     }
     return(df)
+  })
+  sales_avg_rep <- reactive({
+    df <- sales()
+    if(input$plotty_sale =="week"){
+      df <- aggregate(df$Maximum.of.Amount..Net.of.Tax.,
+                      by = list(df$year,df$week,df$Sales.Rep.1),FUN= sum)
+      names(df) <- c("Year","Week","Sales.Rep","Amount")
+    }else if (input$plotty_sale == "day"){
+      df <- aggregate(df$Maximum.of.Amount..Net.of.Tax.,
+                      by = list(df$year,df$Date.Created,df$Sales.Rep.1),FUN= sum)
+      names(df) <- c("Year","Date","Sales.Rep","Amount")
+    }else if(input$plotty_sale == "month"){
+      df <- aggregate(df$Maximum.of.Amount..Net.of.Tax.,
+                      by = list(df$year,df$month,df$Sales.Rep.1),FUN= sum)
+      names(df) <- c("Year","Month","Sales.Rep","Amount")
+    }
+    return(df)
+    
   })
 
   # show plots in each module
@@ -383,8 +427,9 @@ shinyServer(function(input, output,session) {
     
     leads_avg_month <- subset(leads_avg_month(),trimws(Segment,"both") ==trimws(input$segment,"both"))
     leads_avg_month <- subset(leads_avg_month,leads_avg_month$Year == input$year)
-    #leads_avg_rep <- subset(leads_avg_rep(),leads_avg_rep()$Year == input$year)
-    avg_self = mean(leads_avg_rep()$Leads)
+
+    leads_avg_rep <- subset(leads_avg_rep(),leads_avg_rep()$Lead.Generator %in% input$LeadsGen)
+    avg_self = mean(leads_avg_rep$Leads)
     switch(input$plotty,
            "week" = {
              aesthetics1 = aes(x=data.week[,2], y=data.week[,3])
@@ -428,27 +473,53 @@ shinyServer(function(input, output,session) {
      
   })
   output$SalesPlot <- renderPlot({
-    sales = subset(sales(),as.Date(as.character(Date.Created)) >= input$dateRange_sale[1]&as.Date(as.character(Date.Created)) <= input$dateRange[2])
-    data = subset(sales,trimws(Sales.Rep.1,"both")%in%trimws(input$sales_rep,"both"))
-    sales.day <- aggregate(data$Maximum.of.Amount..Net.of.Tax.,by = list(data$Date.Created),FUN = sum)
-    data$week <- week(data$Date.Created)
-    sales.week <- aggregate(data$Maximum.of.Amount..Net.of.Tax.,by = list(data$week),FUN = sum)
-    sales_avg_day <- subset(sales_avg_day(),trimws(Segment,"both") %in% trimws(input$segment_sale,"both"))
-    sales_avg_week <- subset(sales_avg_week(),trimws(Segment,"both") %in% trimws(input$segment_sale,"both"))
+    data <- subset(sales(),trimws(Sales.Rep.1,"both") %in% trimws(input$sales_rep,"both"))
+    sales <- subset(data,as.Date(as.character(Date.Created)) >= input$dateRange_sale[1]&as.Date(as.character(Date.Created)) <= input$dateRange[2])
     
+    sales.day <- aggregate(sales$Maximum.of.Amount..Net.of.Tax.,by = list(sales$Date.Created),FUN = sum)
+    names(sales.day) <- c("Date","Amount")
+    
+    sales.week <- aggregate(data$Maximum.of.Amount..Net.of.Tax.,by = list(data$year,data$week),FUN = sum)
+    names(sales.week) <- c("Year","Week","Amount")
+    sales.month <- aggregate(data$Maximum.of.Amount..Net.of.Tax.,by = list(data$year,data$month),FUN = sum)
+    names(sales.month) <- c("Year","Month","Amount")
+    
+    sales.week <- subset(sales.week,trimws(sales.week$Year,"both") %in% trimws(input$year_sale,"both"))
+    sales.month <-subset(sales.month,trimws(sales.month$Year,"both") %in% trimws(input$year_sale,"both"))
+  
+    sales_avg_day <- subset(sales_avg_day(),trimws(Segment,"both") %in% trimws(input$segment_sale,"both"))
+    sales_avg_day <- subset(sales_avg_day,
+                            as.Date(Date) >= input$dateRange_sale[1]&as.Date(Date) <= input$dateRange_sale[2])
+    sales_avg_week <- subset(sales_avg_week(),trimws(Segment,"both") %in% trimws(input$segment_sale,"both"))
+    sales_avg_week <- subset(sales_avg_week,trimws(sales_avg_week$Year,"both") %in% trimws(input$year_sale,"both"))
+    
+    sales_avg_month <- subset(sales_avg_month(),trimws(Segment,"both") %in% trimws(input$segment_sale,"both"))
+    sales_avg_month <- subset(sales_avg_month,trimws(sales_avg_month$Year,"both") %in% trimws(input$year_sale,"both"))
+    
+    sales_avg_rep <- subset(sales_avg_rep(),sales_avg_rep()$Sales.Rep %in% input$sales_rep)
+    avg_self <- mean(sales_avg_rep$Amount)
     switch(input$plotty_sale,
-           "week" = {aesthetics1 = aes(x=sales.week[,1], y= sales.week[,2],group = "week")
-           data = sales.week
-           xlabtxt = "Week"
-           avg = sales_avg_week
-           plotty= geom_bar(size = 1.2,fill= "#00CCCC",stat="identity")},
-           "day"  = {aesthetics1 = aes(x=sales.day[,1], y= sales.day[,2],group = "day")
-           data = sales.day
-           xlabtxt = "Day"
-           avg = sales_avg_day
-           plotty = geom_line(size = 1.2,colour = "#3399FF")}
-           
+           "month" = {
+             aesthetics1 = aes(x=sales.month[,2], y= sales.month[,3],group = "week")
+             data = sales.month
+             xlabtxt = "Month"
+             avg = sales_avg_month
+             plotty= geom_bar(size = 1.2,fill= "#00CCCC",stat="identity") 
+           },
+           "week" = {
+             aesthetics1 = aes(x=sales.week[,2], y= sales.week[,3],group = "week")
+             data = sales.week
+             xlabtxt = "Week"
+             avg = sales_avg_week
+             plotty= geom_bar(size = 1.2,fill= "#00CCCC",stat="identity")},
+           "day"  = {
+             aesthetics1 = aes(x=sales.day[,1], y= sales.day[,2],group = "day")
+             data = sales.day
+             xlabtxt = "Day"
+             avg = sales_avg_day
+             plotty = geom_line(size = 1.2,colour = "#3399FF")}
     )
+    
     p <- ggplot(data,aesthetics1)+
       plotty+
       geom_point(aesthetics1,data,size = 1.5,colour = "#000033")
@@ -457,6 +528,11 @@ shinyServer(function(input, output,session) {
       p <- p+geom_line(mapping = aes(x=Date, y=`Sales Amount`,group = "avg")
                        ,data = avg,colour = "#CC0033",size = 0.8,linetype = 6)
     }
+    if(input$avg_self_sale){
+      p <- p+geom_hline(yintercept = avg_self,colour = "darkgreen",size = 1,show.legend = TRUE)
+    }
+    
+    
     p <- p+ggtitle(paste("Sales Generated by",input$sales_rep))+
       xlab(xlabtxt)+
       ylab("Sales Amount")+
@@ -516,20 +592,37 @@ shinyServer(function(input, output,session) {
     data=subset(proposal(),trimws(Created.By,"both") %in% trimws(input$Proposal_creator,"both"))
     proposal_sub = subset(data
                           ,as.Date(as.character(Date.Created))>= input$dateRange_pro[1]&as.Date(as.character(Date.Created)) <= input$dateRange_pro[2])
-    proposal_sub$week <- week(proposal_sub$Date.Created)
-    proposal.week <- aggregate(proposal_sub$Amount..Net.of.Tax., by = list(proposal_sub$week),FUN = sum)
-    proposal.day <- aggregate(proposal_sub$Amount..Net.of.Tax.,by = list(proposal_sub$Date.Created),FUN=sum)
+    proposal.month <- aggregate(data$Amount..Net.of.Tax.,
+                                by = list(data$year,data$month),FUN = sum)
+    names(proposal.month) <- c("year","month","amount")
+    proposal.week <- aggregate(data$Amount..Net.of.Tax.,
+                               by = list(data$year,data$week),FUN = sum)
+    names(proposal.week) <- c("year","week","amount")
+    proposal.day <- aggregate(proposal_sub$Amount..Net.of.Tax.,
+                              by = list(proposal_sub$Date.Created),FUN=sum)
+    names(proposal.day) <- c("date","amount")
+    proposal.week <- subset(proposal.week,proposal.week$year %in% input$year_pro)
+    proposal.month <- subset(proposal.month,proposal.month$year %in% input$year_pro)
     switch(input$plotty_pro,
-           "week" = {aesthetics1 = aes(x=proposal.week[,1], y=proposal.week[,2],group = "week")
-           pro_data = proposal.week
-           xlabtxt = "Week"
-           plotty= geom_bar(size = 1.2,fill= "#00CCCC",stat="identity")},
+           "week" = {
+             aesthetics1 = aes(x=proposal.week[,2], y=proposal.week[,3],group = "week")
+             pro_data = proposal.week
+             xlabtxt = "Week"
+             plotty= geom_bar(size = 1.2,fill= "#00CCCC",stat="identity")},
+           
            "day"  = {
              aesthetics1 = aes(x=proposal.day[,1], y=proposal.day[,2],group = "day")
              pro_data = proposal.day
              xlabtxt = "Day"
-             plotty = geom_line(aesthetics1,data = proposal.day,size = 1.2,colour = "#00CCCC")
-           })
+             plotty = geom_line(aesthetics1,data = proposal.day,size = 1.2,colour = "#00CCCC")},
+           
+           "month" = {
+             aesthetics1 = aes(x=proposal.month[,2], y=proposal.month[,3],group = "month")
+             pro_data = proposal.month
+             xlabtxt = "Month"
+             plotty= geom_bar(size = 1.2,fill= "#00CCCC",stat="identity")
+           }
+           )
     p <- ggplot(data = pro_data,mapping = aesthetics1)+
       plotty+geom_point(size = 1.5)+
       ggtitle(paste("Proposal Created by",input$Proposal_creator))+

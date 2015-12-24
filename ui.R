@@ -101,10 +101,11 @@ shinyUI(navbarPage("Sales Activity Report",
                               uiOutput("segment_pro"),
                               uiOutput("Proposal_creator"),
                               uiOutput('dateRange_pro'),
+                              uiOutput("year_pro"),
                               br(),
                               fluidRow(
                                 column(7, radioButtons("plotty_pro", "Plot Type",
-                                                       c("By day"="day","By week"="week")
+                                                       c("By day"="day","By week"="week","By month" ="month")
                                                        , selected="day")
                                 )
                               ),
@@ -117,14 +118,15 @@ shinyUI(navbarPage("Sales Activity Report",
                                                            dataTableOutput("ProposalTable"))))),
                    
                    tabPanel("Sales Order",
-                            column(4, wellPanel(
+                            column(3, wellPanel(
                               uiOutput("segment_sale"),
                               uiOutput("sales_rep"),
                               uiOutput('dateRange_sale'),
+                              uiOutput('year_sale'),
                               br(),
                               fluidRow(
                                 column(7, radioButtons("plotty_sale", "Plot Type",
-                                                       c("By day"="day","By week"="week")
+                                                       c("By day"="day","By week"="week","By month"="month")
                                                        , selected="day")
                                 )
                               ),
@@ -134,8 +136,8 @@ shinyUI(navbarPage("Sales Activity Report",
                                        h5(strong('Plot Options')),
                                        checkboxInput('avg_line_sale'
                                                      ,'Compare with average level within segment'),
-                                       checkboxInput('compare2'
-                                                     ,'Compare with other sales representatives'),
+                                       checkboxInput('avg_self_sale'
+                                                     ,'Compare with self average level'),
                                        downloadButton('downloadSales'
                                                       ,'Download Sales Table'))
                               ))
