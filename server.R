@@ -256,12 +256,15 @@ shinyServer(function(input, output,session) {
     }
   })
   
+  output$year_summary <- renderUI({
+    selectInput("year_summary","Choose the year you want:",choices = proposal()$year)
+  })
   output$selectList <- renderUI({
     if (input$reportty == "week"){
-      selectInput("list",input$reportty,choices = unique(sort(week(sales()$Date.Created))))  
+      selectInput("list",input$reportty,choices = sort(week(sales()$Date.Created)))
     }
     else if(input$reportty == "month"){
-      selectInput("list",input$reportty,choices = unique((month(sales()$Date.Created,label = TRUE,abbr = TRUE))))
+      selectInput("list",input$reportty,choices = as.character(sort(month(sales()$Date.Created,label = TRUE))))
     }
   })
   output$segLevel <- renderUI({
@@ -273,6 +276,7 @@ shinyServer(function(input, output,session) {
     }
     
   })
+  
   
   # show tables in each module
   output$LeadsTable <- renderDataTable({
@@ -306,7 +310,9 @@ shinyServer(function(input, output,session) {
                       choices = as.character(salesrep()$sale_rep[salesrep()$segment==input$segment_pro]))
   })
   observe({
-    updateSelectInput(session,inputId ="RepLevel" ,label ="Sales Rep" ,choices = as.character(sales()$Sales.Rep.1[sales()$segment == input$segLevel]))
+    updateSelectInput(session,inputId ="RepLevel" ,
+                      label ="Sales Rep" ,
+                      choices = unique(as.character(sales()$Sales.Rep.1[sales()$segment == input$segLevel])))
     
   })
   
@@ -637,17 +643,17 @@ shinyServer(function(input, output,session) {
   output$title <- renderText(
     if (input$reportty=="month" ){
       if(input$level == "segment"){
-        paste(paste("Summary Report by",input$level,sep = " "),input$segLevel,sep=":")  
+        paste(paste(input$year_summary,input$list,"Summary Report by",input$level,sep = " "),input$segLevel,sep=":")  
       }
       else if (input$level == "sales rep"){
-        paste(paste("Monthly Summary Report by",input$level,sep = " "),input$RepLevel,sep=":")
+        paste(paste(input$year_summary,input$list,"Summary Report by",input$level,sep = " "),input$RepLevel,sep=":")
       }
     }else if (input$reportty =="week"){
       if(input$level == "segment"){
-        paste(paste("Weekly Summary Report by",input$level,sep = " "),input$segLevel,sep=":")  
+        paste(paste(input$year_summary,"Week",input$list,"Summary Report by",input$level,sep = " "),input$segLevel,sep=":")  
       }
       else if (input$level == "sales rep"){
-        paste(paste("Weekly Summary Report by",input$level,sep = " "),input$RepLevel,sep=":")
+        paste(paste(input$year_summary,"Week",input$list,"Summary Report by",input$level,sep = " "),input$RepLevel,sep=":")
         
       } 
     }

@@ -156,12 +156,11 @@ shinyUI(navbarPage("Sales Activity Report",
                               fluidRow(
                                 column(7, radioButtons("reportty", "Report Type",
                                                        c("By month"="month","By week"="week")
-                                                       , selected="week"),
-                                       uiOutput("selectList")
+                                                       , selected="week")
                                 )),
+                              uiOutput("year_summary"),
+                              uiOutput("selectList"),
                               selectInput("level","Level",choices = c("segment","sales rep")),
-                              #,
-                              #,
                               uiOutput("segLevel"),
                               uiOutput("RepLevel"),
                               downloadButton("downloadReport","Export Report")
