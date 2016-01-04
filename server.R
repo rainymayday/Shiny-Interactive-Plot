@@ -171,8 +171,8 @@ shinyServer(function(input, output,session) {
     return(proposal1)
   })
   so1 <- reactive({
-      so1 <- subset(SalesTable(),
-                    tolower(trimws(SalesTable()$Segment,"both")) %in% tolower(trimws(input$segLevel,"both")))
+      so1 <- subset(SalesTable()
+                    ,tolower(trimws(SalesTable()$Segment,"both")) %in% tolower(trimws(input$segLevel,"both")))
       return(so1)
     })
   
@@ -187,25 +187,25 @@ shinyServer(function(input, output,session) {
     validate(
       need(leads() != "","Please Upload leads table!")
     )
-      leads()
+      head(leads())
     })
   output$sales <- renderTable({
     validate(
       need(sales() != "","Please Upload sales table!")
     )
-    sales()
+    head(sales())
     })
   output$contact <- renderTable({
     validate(
       need(contract() != "","Please Upload contract table!")
     )
-    contract()
+    head(contract())
   })
   output$proposal <- renderTable({
     validate(
       need(proposal() != "","Please Upload proposal table")
     )
-    proposal()
+    head(proposal())
   })
   
   # reactive UI
@@ -287,6 +287,9 @@ shinyServer(function(input, output,session) {
     selectInput("year_summary","Choose the year you want:",choices = proposal()$year)
   })
   output$selectList <- renderUI({
+    validate(
+      need(sales() != "","Please Upload sales table!")
+    )
     if (input$reportty == "week"){
       selectInput("list",input$reportty,choices = sort(week(sales()$Date.Created)))
     }
@@ -448,8 +451,10 @@ shinyServer(function(input, output,session) {
   output$LeadsPlot <- renderPlot({
     validate(
       need(leads() != "","Please Upload leads table!")
+      )
+    validate(
+      need(input$LeadsGen != "","Please select sales rep you want to see")
     )
-    
     data <-subset(leads(),trimws(Lead.Generator,"both") %in% trimws(input$LeadsGen,"both"))
     leads_sub <- subset(data,as.Date(as.character(Date.Created)) >= input$dateRange[1]&as.Date(as.character(Date.Created)) <= input$dateRange[2])
     
@@ -520,6 +525,10 @@ shinyServer(function(input, output,session) {
     validate(
       need(sales() != "","Please Upload sales table!")
     )
+    validate(
+      need(input$sales_rep != "","Please select sales rep you want to see")
+    )
+   
     data <- subset(sales(),trimws(Sales.Rep.1,"both") %in% trimws(input$sales_rep,"both"))
     sales <- subset(data,as.Date(as.character(Date.Created)) >= input$dateRange_sale[1]&as.Date(as.character(Date.Created)) <= input$dateRange[2])
     
@@ -591,6 +600,10 @@ shinyServer(function(input, output,session) {
     validate(
       need(contract() != "","Please Upload contract table!")
     )
+    validate(
+      need(input$Contract_creator != "","Please select sales rep you want to see")
+    )
+    
     data=subset(contract(),trimws(Created.By,"both") %in% trimws(input$Contract_creator,"both"))
     contract_sub = subset(data,as.Date(as.character(Date.Created))>= input$dateRange_con[1]&as.Date(as.character(Date.Created)) <= input$dateRange_con[2])
     
@@ -641,6 +654,9 @@ shinyServer(function(input, output,session) {
   output$ProposalPlots <- renderPlot({
     validate(
       need(proposal() != "","Please Upload proposal table!")
+    )
+    validate(
+      need(input$Proposal_creator != "","Please select sales rep you want to see")
     )
     data=subset(proposal(),trimws(Created.By,"both") %in% trimws(input$Proposal_creator,"both"))
     proposal_sub = subset(data
@@ -706,7 +722,6 @@ shinyServer(function(input, output,session) {
     }
     )
   output$total_leads <- renderText(
-    
     if(input$level == "segment"){
 
       paste("Total Leads:",sum(leads1()$`No of Leads`),sep = " ")
@@ -830,5 +845,7 @@ shinyServer(function(input, output,session) {
       write.csv(ProposalTable(),file)
     }
   )
+  
+
 
  })

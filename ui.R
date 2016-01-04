@@ -21,20 +21,7 @@ shinyUI(navbarPage("Sales Activity Report",
                               fileInput('file2', 'Upload Sales Order Table ',
                                         accept=c('text/csv', 
                                                  'text/comma-separated-values,text/plain', 
-                                                 '.csv'),multiple = FALSE),
-                              
-                              
-                              checkboxInput('header', 'Header', TRUE),
-                              radioButtons('sep', 'Separator',
-                                           c(Comma=',',
-                                             Semicolon=';',
-                                             Tab='\t'),
-                                           ','),
-                              radioButtons('quote', 'Quote',
-                                           c(None='',
-                                             'Double Quote'='"',
-                                             'Single Quote'="'"),
-                                           '"')
+                                                 '.csv'),multiple = FALSE)
                               )
                             ),
                             mainPanel(
@@ -132,7 +119,7 @@ shinyUI(navbarPage("Sales Activity Report",
                               ),
                               
                               fluidRow(
-                                column(9,
+                                column(12,
                                        h5(strong('Plot Options')),
                                        checkboxInput('avg_line_sale'
                                                      ,'Compare with average level within segment'),
@@ -162,9 +149,7 @@ shinyUI(navbarPage("Sales Activity Report",
                               uiOutput("selectList"),
                               selectInput("level","Level",choices = c("segment","sales rep")),
                               uiOutput("segLevel"),
-                              uiOutput("RepLevel"),
-                              downloadButton("downloadReport","Export Report")
-                              
+                              uiOutput("RepLevel")
                             )),
                             mainPanel(
                               tabsetPanel(type = "tab",
@@ -186,7 +171,6 @@ shinyUI(navbarPage("Sales Activity Report",
                                                             textOutput("total_contracts_no"),
                                                             textOutput("avgperperson_contracts_no"),
                                                             textOutput("avginSeg_contracts_no")
-                                                            
                                                      )),
                                                    fluidRow(
                                                      column(6,h3("Proposal Summary"),
@@ -208,9 +192,7 @@ shinyUI(navbarPage("Sales Activity Report",
                                                             textOutput("avgperperson_SO_no"),
                                                             textOutput("avginSeg_SO_no")
                                                      ))
-                                          ),
-                                          
-                                          tabPanel("Details"))
+                                          ))
                             ))
                             ))
                 
