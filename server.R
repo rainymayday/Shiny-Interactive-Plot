@@ -203,7 +203,6 @@ shinyServer(function(input, output,session) {
     }
     return(proposal1)
   })
-  
   so1 <- reactive({
     so1 <-subset(sales(),
                        sales()$year == input$year_summary)
@@ -220,7 +219,9 @@ shinyServer(function(input, output,session) {
     }
       return(so1)
     })
-  
+  ################################################################################
+  # create team_avg,personal_avg for comparison                                  #
+  ################################################################################
   # show tables in the beginning, for users to check the correctness of the table
   output$salesperson <- renderTable({
     validate(
@@ -375,13 +376,14 @@ shinyServer(function(input, output,session) {
     ProposalTable()
   })
   output$leads1 <- renderTable({
+    
     if(input$level == "sales rep"){
       mydf <- data.frame(Leads = c('Total Leads','Team Average','Individual Average'), 
-                         No = c(nrow(leads1()),15,20), check.names = FALSE)
+                         No = c(sum(leads1()$freq),15,20), check.names = FALSE)
     }
     else if(input$level == "segment"){
       mydf <- data.frame(Leads = c('Total Leads','Team Average','Whole Average'), 
-                         No = c(nrow(leads1()),15,20), check.names = FALSE)
+                         No = c(sum(leads1()$freq),15,20), check.names = FALSE)
     }
     
     return(mydf)
@@ -422,12 +424,7 @@ shinyServer(function(input, output,session) {
     }
     return(mydf)
   })
-  output$TEST <- renderTable({
-    return(proposal1())
-  })
-  output$VALUE <- renderText(
-    paste("you selected",input$list,sep = ":")
-  )
+ 
   
   # update sales rep based on selected segment
   observe({
@@ -821,7 +818,6 @@ shinyServer(function(input, output,session) {
       } 
     }
     )
-  ###################################################################################################
   output$total_leads <- renderText(
       paste("Total Leads:",nrow(leads1()),sep = " ")
       
@@ -830,86 +826,6 @@ shinyServer(function(input, output,session) {
                                                 ,round(mean(LeadsTable()$`No of Leads`),2),sep =" "))
   output$avginSeg_leads <- renderText(paste("--Average Level within Segment:"
                                             ,round(mean(leads1()$`No of Leads`),2),sep = ""))
-  
-  
-  
-  ####################################################################################################
-  
-  output$total_contracts <- renderText(
-    if(input$level == "segment"){
-      paste("Total Contracts sent(Amount):"
-            ,round(sum(contract1()$`Total Amount`),2),sep = "")
-    }
-    else if(input$level == "sales rep"){
-      paste("Total Contracts sent(Amount):"
-            ,ContractTable()$`Total Amount`[ContractTable()$Created.By ==input$RepLevel],sep = "")
-    }
-    
-  )
-  output$total_contracts_no <- renderText(
-    if(input$level == "segment"){
-      paste("Total Contracts sent(No):",round(sum(contract1()$No_Of_Contract),2),sep = "")
-    }
-    else if(input$level == "sales rep"){
-      paste("Total Contracts sent(No):",ContractTable()$No_Of_Contract[ContractTable()$Created.By ==input$RepLevel],sep = "")
-    }
-  )
-  output$avgperperson_contracts <- renderText(paste("--Average Amount Per Person:"
-                                                    ,round(mean(ContractTable()$`Total Amount`),2),sep = ""))
-  output$avginSeg_contracts <- renderText(paste("--Average Amount within Segment:"
-                                                ,round(mean(contract1()$`Total Amount`),2),sep = ""))
-  output$avgperperson_contracts_no <- renderText(paste("--Average Number Per Person:"
-                                                       ,round(mean(ContractTable()$No_Of_Contract),2),sep = ""))
-  output$avginSeg_contracts_no <-renderText(paste("--Average Number Per Person within Segment:"
-                                                  ,round(mean(contract1()$No_Of_Contract),2),sep = ""))
-  output$total_proposals <- renderText(
-    if(input$level == "segment"){
-      paste("Total proposals sent(Amount):",round(sum(proposal1()$`Total Amount`),2),sep = "")  
-    }
-    else if(input$level == "sales rep"){
-      paste("Total proposals sent(Amount):",ProposalTable()$`Total Amount`[ProposalTable()$Created.By==input$RepLevel],sep = "")
-    }
-  )
-  output$total_proposals_no <- renderText(
-    if(input$level == "segment"){
-      paste("Total proposals sent(No):",round(sum(proposal1()$No_of_Proposal),2),sep = "") 
-    }
-    else if(input$level == "sales rep"){
-      paste("Total proposals sent(No):",ProposalTable()$No_of_Proposal[ProposalTable()$Created.By==input$RepLevel],sep = "")
-    }
-  )
-  output$avgperperson_proposals <- renderText(paste("--Average Amount Per Person:"
-                                                    ,round(mean(ProposalTable()$`Total Amount`),2),sep = ""))
-  output$avginSeg_proposals <- renderText(paste("--Average Amount within Segment:"
-                                                ,round(mean(proposal1()$`Total Amount`),2),sep = ""))
-  output$avgperperson_proposals_no <- renderText(paste("--Average Number Per Person:"
-                                                       ,round(mean(ProposalTable()$No_of_Proposal),2),sep = ""))
-  output$avginSeg_proposals_no <-renderText(paste("--Average Number Per Person within Segment:"
-                                                  ,round(mean(proposal1()$No_of_Proposal),2),sep = ""))
-  output$total_SO <- renderText(
-    if(input$level == "segment"){
-      paste("Total SO (Amount):",round(sum(so1()$Sales_Amount),2),sep = "")  
-    }
-    else if(input$level == "sales rep"){
-      paste("Total SO (Amount):",SalesTable()$Sales_Amount[SalesTable()$Sale_rep==input$RepLevel],sep = "")
-    }
-  )
-  output$total_SO_no <- renderText(
-    if(input$level == "segment"){
-      paste("Total SO (No):",round(sum(so1()$No_of_Sales),2),sep = "")  
-    }
-    else if(input$level == "sales rep"){
-      paste("Total SO (No):",SalesTable()$No_of_Sales[SalesTable()$Sale_rep==input$RepLevel],sep = "")
-    }
-  )
-  output$avgperperson_SO <- renderText(paste("--Average Amount Per Person:"
-                                             ,round(mean(SalesTable()$Sales_Amount),2),sep=""))
-  output$avginSeg_SO <- renderText(paste("--Average Amount within Segment:"
-                                         ,round(mean(so1()$Sales_Amount),2),sep = ""))
-  output$avgperperson_SO_no <- renderText(paste("--Average Number Per Person:"
-                                                ,round(mean(SalesTable()$No_of_Sales),2),sep = ""))
-  output$avginSeg_SO_no <-renderText(paste("--Average Number Per Person within Segment:"
-                                           ,round(mean(so1()$No_of_Sales),2),sep = "")) 
   
   # download all the tables
   output$downloadLeads <- downloadHandler(
@@ -944,7 +860,4 @@ shinyServer(function(input, output,session) {
       write.csv(ProposalTable(),file)
     }
   )
-  
-
-
  })
