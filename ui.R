@@ -158,41 +158,23 @@ shinyUI(navbarPage("Sales Activity Report",
                                                    br(),
                                                    fluidRow(
                                                      column(6,h3("Leads Summary"),
-                                                            #tableOutput("leads1"),
-                                                            textOutput("total_leads"),
-                                                            textOutput("avgperperson_leads"),
-                                                            textOutput("avginSeg_leads")),
+                                                            tableOutput("leads1")),
                                                      column(6,h3("Contract Summary"),
-                                                            #tableOutput("contract1"),
-                                                            textOutput("total_contracts"),
-                                                            textOutput("avgperperson_contracts"),
-                                                            textOutput("avginSeg_contracts"),
-                                                            br(),
-                                                            textOutput("total_contracts_no"),
-                                                            textOutput("avgperperson_contracts_no"),
-                                                            textOutput("avginSeg_contracts_no")
-                                                     )),
+                                                            tableOutput("contract1")
+                                                      )
+                                                     ),
                                                    fluidRow(
                                                      column(6,h3("Proposal Summary"),
-                                                            #tableOutput("proposal1"),
-                                                            textOutput("total_proposals"),
-                                                            textOutput("avgperperson_proposals"),
-                                                            textOutput("avginSeg_proposals"),
-                                                            br(),
-                                                            textOutput("total_proposals_no"),
-                                                            textOutput("avgperperson_proposals_no"),
-                                                            textOutput("avginSeg_proposals_no")),
+                                                            tableOutput("proposal1")
+                                                            ),
                                                      column(6,h3("Sales Order Summary"),
-                                                            #tableOutput("so1"),
-                                                            textOutput("total_SO"),
-                                                            textOutput("avgperperson_SO"),
-                                                            textOutput("avginSeg_SO"),
-                                                            br(),
-                                                            textOutput("total_SO_no"),
-                                                            textOutput("avgperperson_SO_no"),
-                                                            textOutput("avginSeg_SO_no")
-                                                     ))
-                                          ))
+                                                            tableOutput("so1")))
+                                          ),
+                                          tabPanel("TEST",
+                                                   tableOutput("TEST"),
+                                                   textOutput("VALUE")
+                                                   )
+                                          )
                             ))
                             ))
                 

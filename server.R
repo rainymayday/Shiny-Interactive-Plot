@@ -156,23 +156,68 @@ shinyServer(function(input, output,session) {
   
   # datasets for summary part
   leads1 <- reactive({
-    leads1 <-subset(LeadsTable(),
-           tolower(trimws(LeadsTable()$segment,"both")) == tolower(trimws(input$segLevel,"both")))
+    leads1 <-subset(leads(),
+                    leads()$year == input$year_summary)
+    if(input$level == "sales rep"){
+      leads1 <- subset(leads1,trimws(leads1$Lead.Generator,"both") %in% trimws(input$RepLevel,"both"))
+    }else if(input$level == "segment"){
+      leads1 <- subset(leads1,trimws(leads1$segment,"both") %in% trimws(input$segLevel,"both"))
+    }
+    if (input$reportty == "month"){
+      leads1 <- subset(leads1,trimws(leads1$month,"both") == trimws(input$list,"both"))
+    }
+    else if(input$reportty == "week"){
+      leads1 <- subset(leads1,trimws(leads1$week,"both") == trimws(input$list,"both"))
+    }
     return(leads1)
   })
   contract1 <- reactive({
-    contract1 <-subset(ContractTable(),
-                       tolower(trimws(ContractTable()$Segment,"both")) == tolower(trimws(input$segLevel,"both")))
+    contract1 <-subset(contract(),
+                    contract()$year == input$year_summary)
+    if(input$level == "sales rep"){
+      contract1 <- subset(contract1,trimws(contract1$Created.By,"both") %in% trimws(input$RepLevel,"both"))
+    }else if(input$level == "segment"){
+      contract1 <- subset(contract1,trimws(contract1$segment,"both") %in% trimws(input$segLevel,"both"))
+    }
+    if (input$reportty == "month"){
+      contract1 <- subset(contract1,trimws(contract1$month,"both") == trimws(input$list,"both"))
+    }
+    else if(input$reportty == "week"){
+      contract1 <- subset(contract1,trimws(contract1$week,"both") == trimws(input$list,"both"))
+    }
     return(contract1)
   })
   proposal1 <- reactive({
-    proposal1 <- subset(ProposalTable(),
-                        tolower(trimws(ProposalTable()$Segment,"both")) == tolower(trimws(input$segLevel,"both")))
+    proposal1 <-subset(proposal(),
+                       proposal()$year == input$year_summary)
+    if(input$level == "sales rep"){
+      proposal1 <- subset(proposal1,trimws(proposal1$Created.By,"both") %in% trimws(input$RepLevel,"both"))
+    }else if(input$level == "segment"){
+      proposal1 <- subset(proposal1,trimws(proposal1$segment,"both") %in% trimws(input$segLevel,"both"))
+    }
+    if (input$reportty == "month"){
+      proposal1 <- subset(proposal1,trimws(proposal1$month,"both") == trimws(input$list,"both"))
+    }
+    else if(input$reportty == "week"){
+      proposal1 <- subset(proposal1,trimws(proposal1$week,"both") == trimws(input$list,"both"))
+    }
     return(proposal1)
   })
+  
   so1 <- reactive({
-      so1 <- subset(SalesTable()
-                    ,tolower(trimws(SalesTable()$Segment,"both")) %in% tolower(trimws(input$segLevel,"both")))
+    so1 <-subset(sales(),
+                       sales()$year == input$year_summary)
+    if(input$level == "sales rep"){
+      so1 <- subset(so1,trimws(so1$Sales.Rep.1,"both") %in% trimws(input$RepLevel,"both"))
+    }else if(input$level == "segment"){
+      so1 <- subset(so1,trimws(so1$segment,"both") %in% trimws(input$segLevel,"both"))
+    }
+    if (input$reportty == "month"){
+      so1 <- subset(so1,trimws(so1$month,"both") == trimws(input$list,"both"))
+    }
+    else if(input$reportty == "week"){
+      so1 <- subset(so1,trimws(so1$week,"both") == trimws(input$list,"both"))
+    }
       return(so1)
     })
   
@@ -329,6 +374,60 @@ shinyServer(function(input, output,session) {
     )
     ProposalTable()
   })
+  output$leads1 <- renderTable({
+    if(input$level == "sales rep"){
+      mydf <- data.frame(Leads = c('Total Leads','Team Average','Individual Average'), 
+                         No = c(nrow(leads1()),15,20), check.names = FALSE)
+    }
+    else if(input$level == "segment"){
+      mydf <- data.frame(Leads = c('Total Leads','Team Average','Whole Average'), 
+                         No = c(nrow(leads1()),15,20), check.names = FALSE)
+    }
+    
+    return(mydf)
+  })
+  output$contract1 <- renderTable({
+    if(input$level == "sales rep"){
+      mydf <- data.frame(contract = c('Total Contracts','Team Average','Individual Average'),
+                         No = c(nrow(contract1()),15,20),Amount = c(sum(contract1()$Amount..Net.of.Tax.),200,300), check.names = FALSE)
+      
+    }else if(input$level == "segment"){
+      mydf <- data.frame(contract = c('Total Contracts','Team Average','Whole Average'),
+                         No = c(nrow(contract1()),15,20),Amount = c(sum(contract1()$Amount..Net.of.Tax.),200,300), check.names = FALSE)
+    }
+    
+    return(mydf)
+    
+  })
+  output$proposal1 <- renderTable({
+    if(input$level == "sales rep"){
+      mydf <- data.frame(proposal = c('Total Proposals','Team Average','Individual Average'),
+                         No = c(nrow(proposal1()),15,20),Amount = c(sum(proposal1()$Amount..Net.of.Tax.),200,300), check.names = FALSE)
+      
+    }else if(input$level == "segment"){
+      mydf <- data.frame(proposal = c('Total Proposals','Team Average','Whole Average'),
+                         No = c(nrow(proposal1()),15,20),Amount = c(sum(proposal1()$Amount..Net.of.Tax.),200,300), check.names = FALSE)
+    }
+    
+    return(mydf)
+  })
+  output$so1 <- renderTable({
+    if(input$level == "sales rep"){
+      mydf <- data.frame(SalesOrder = c('Total Sales Order','Team Average','Individual Average'),
+                         No = c(nrow(so1()),15,20),Amount = c(sum(so1()$Maximum.of.Amount..Net.of.Tax.),200,300), check.names = FALSE)
+      
+    }else if(input$level == "segment"){
+      mydf <- data.frame(SalesOrder = c('Total Sales Order','Team Average','Whole Average'),
+                         No = c(nrow(so1()),15,20),Amount = c(sum(so1()$Maximum.of.Amount..Net.of.Tax.),200,300), check.names = FALSE)
+    }
+    return(mydf)
+  })
+  output$TEST <- renderTable({
+    return(proposal1())
+  })
+  output$VALUE <- renderText(
+    paste("you selected",input$list,sep = ":")
+  )
   
   # update sales rep based on selected segment
   observe({
@@ -446,6 +545,7 @@ shinyServer(function(input, output,session) {
     return(df)
     
   })
+
 
   # show plots in each module
   output$LeadsPlot <- renderPlot({
@@ -721,22 +821,20 @@ shinyServer(function(input, output,session) {
       } 
     }
     )
+  ###################################################################################################
   output$total_leads <- renderText(
-    if(input$level == "segment"){
-
-      paste("Total Leads:",sum(leads1()$`No of Leads`),sep = " ")
+      paste("Total Leads:",nrow(leads1()),sep = " ")
       
-    }
-    else if(input$level == "sales rep"){
-  
-      paste("Total Leads:",LeadsTable()$`No of Leads`[LeadsTable()$Sale_rep == input$RepLevel],sep = " ")
-      
-    }
   )
   output$avgperperson_leads <- renderText(paste("--Average Level Per Person:"
                                                 ,round(mean(LeadsTable()$`No of Leads`),2),sep =" "))
   output$avginSeg_leads <- renderText(paste("--Average Level within Segment:"
                                             ,round(mean(leads1()$`No of Leads`),2),sep = ""))
+  
+  
+  
+  ####################################################################################################
+  
   output$total_contracts <- renderText(
     if(input$level == "segment"){
       paste("Total Contracts sent(Amount):"
@@ -746,6 +844,7 @@ shinyServer(function(input, output,session) {
       paste("Total Contracts sent(Amount):"
             ,ContractTable()$`Total Amount`[ContractTable()$Created.By ==input$RepLevel],sep = "")
     }
+    
   )
   output$total_contracts_no <- renderText(
     if(input$level == "segment"){
