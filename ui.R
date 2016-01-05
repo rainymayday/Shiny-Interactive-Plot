@@ -169,11 +169,7 @@ shinyUI(navbarPage("Sales Activity Report",
                                                             ),
                                                      column(6,h3("Sales Order Summary"),
                                                             tableOutput("so1")))
-                                          ),
-                                          tabPanel("TEST",
-                                                   tableOutput("TEST"),
-                                                   textOutput("VALUE")
-                                                   )
+                                          )
                                           )
                             ))
                             ))

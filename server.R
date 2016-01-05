@@ -218,6 +218,7 @@ shinyServer(function(input, output,session) {
     }
       return(so1)
     })
+  # team avg level
   team_avg_leads <- reactive({
     df <- leads()
     if(input$reportty == "month"){
@@ -301,6 +302,178 @@ shinyServer(function(input, output,session) {
       names(df.sum) <- c("year","week","segment","no")
     }
     df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary & df.sum$segment %in% input$segLevel))
+    return(df.sum.1)
+  })
+  # personal avg level
+  personal_avg_leads <- reactive({
+    df <- leads()
+    if(input$reportty == "month"){
+      df.sum <- aggregate(df$freq,by = list(df$year,df$month,df$Lead.Generator),FUN = sum)
+      names(df.sum) <- c("year","month","person","leads")
+    }else if(input$reportty == "week"){
+      df.sum <- aggregate(df$freq,by = list(df$year,df$week,df$Lead.Generator),FUN = sum)
+      names(df.sum) <- c("year","week","person","leads")
+    }
+    df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary & df.sum$person %in% input$RepLevel))
+    return(df.sum.1)
+  })
+  personal_avg_so <- reactive({
+    df <- sales()
+    if(input$reportty == "month"){
+      df.sum <- aggregate(df$Maximum.of.Amount..Net.of.Tax.,
+                          by = list(df$year,df$month,df$Sales.Rep.1),FUN = sum)
+      names(df.sum) <- c("year","month","person","amount")
+    }else if(input$reportty == "week"){
+      df.sum <- aggregate(df$Maximum.of.Amount..Net.of.Tax.,
+                          by = list(df$year,df$week,df$Sales.Rep.1),FUN = sum)
+      names(df.sum) <- c("year","week","person","amount")
+    }
+    df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary & df.sum$person %in% input$RepLevel))
+    return(df.sum.1)
+  })
+  personal_avg_so_no <- reactive({
+    df <- sales()
+    if(input$reportty == "month"){
+      df.sum <- count(df,c("year","month","Sales.Rep.1"))
+      names(df.sum) <- c("year","month","person","no")
+    }else if(input$reportty == "week"){
+      df.sum <- count(df,c("year","week","Sales.Rep.1"))
+      names(df.sum) <- c("year","week","person","no")
+    }
+    df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary & df.sum$person %in% input$RepLevel))
+    return(df.sum.1)
+  })
+  personal_avg_prop <- reactive({
+    df <- proposal()
+    if(input$reportty == "month"){
+      df.sum <- aggregate(df$Amount..Net.of.Tax.,by = list(df$year,df$month,df$Created.By),FUN = sum)
+      names(df.sum) <- c("year","month","person","amount")
+    }else if(input$reportty == "week"){
+      df.sum <- aggregate(df$Amount..Net.of.Tax.,by = list(df$year,df$week,df$Created.By),FUN = sum)
+      names(df.sum) <- c("year","week","person","amount")
+    }
+    df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary & df.sum$person %in% input$RepLevel))
+    return(df.sum.1)
+  })
+  personal_avg_prop_no <- reactive({
+    df <- proposal()
+    if(input$reportty == "month"){
+      df.sum <- count(df,c("year","month","Created.By"))
+      names(df.sum) <- c("year","month","person","no")
+    }else if(input$reportty == "week"){
+      df.sum <- count(df,c("year","week","Created.By"))
+      names(df.sum) <- c("year","week","person","no")
+    }
+    df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary & df.sum$person %in% input$RepLevel))
+    return(df.sum.1) 
+  })
+  personal_avg_cont <- reactive({
+    df <- contract()
+    if(input$reportty == "month"){
+      df.sum <- aggregate(df$Amount..Net.of.Tax.,by = list(df$year,df$month,df$Created.By),FUN = sum)
+      names(df.sum) <- c("year","month","person","amount")
+    }else if(input$reportty == "week"){
+      df.sum <- aggregate(df$Amount..Net.of.Tax.,by = list(df$year,df$week,df$Created.By),FUN = sum)
+      names(df.sum) <- c("year","week","person","amount")
+    }
+    df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary & df.sum$person %in% input$RepLevel))
+    return(df.sum.1)
+  })
+  personal_avg_cont_no <- reactive({
+    df <- contract()
+    if(input$reportty == "month"){
+      df.sum <- count(df,c("year","month","Created.By"))
+      names(df.sum) <- c("year","month","person","no")
+    }else if(input$reportty == "week"){
+      df.sum <- count(df,c("year","week","Created.By"))
+      names(df.sum) <- c("year","week","person","no")
+    }
+    df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary & df.sum$person %in% input$RepLevel))
+    return(df.sum.1)
+  })
+  # whole avg level
+  whole_avg_leads <- reactive({
+    df <- leads()
+    if(input$reportty == "month"){
+      df.sum <- aggregate(df$freq,by = list(df$year,df$month),FUN = sum)
+      names(df.sum) <- c("year","month","leads")
+    }else if(input$reportty == "week"){
+      df.sum <- aggregate(df$freq,by = list(df$year,df$week),FUN = sum)
+      names(df.sum) <- c("year","week","leads")
+    }
+    df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary))
+    return(df.sum.1)
+  })
+  whole_avg_so <- reactive({
+    df <- sales()
+    if(input$reportty == "month"){
+      df.sum <- aggregate(df$Maximum.of.Amount..Net.of.Tax.,by = list(df$year,df$month),FUN = sum)
+      names(df.sum) <- c("year","month","amount")
+    }else if(input$reportty == "week"){
+      df.sum <- aggregate(df$Maximum.of.Amount..Net.of.Tax.,by = list(df$year,df$week),FUN = sum)
+      names(df.sum) <- c("year","week","amount")
+    }
+    df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary))
+    return(df.sum.1)
+  })
+  whole_avg_so_no <- reactive({
+    df <- sales()
+    if(input$reportty == "month"){
+      df.sum <- count(df,c("year","month"))
+      names(df.sum) <- c("year","month","no")
+    }else if(input$reportty == "week"){
+      df.sum <- count(df,c("year","week"))
+      names(df.sum) <- c("year","week","no")
+    }
+    df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary ))
+    return(df.sum.1)
+  })
+  whole_avg_cont <- reactive({
+    df <- contract()
+    if(input$reportty == "month"){
+      df.sum <- aggregate(df$Amount..Net.of.Tax.,by = list(df$year,df$month),FUN = sum)
+      names(df.sum) <- c("year","month","amount")
+    }else if(input$reportty == "week"){
+      df.sum <- aggregate(df$Amount..Net.of.Tax.,by = list(df$year,df$week),FUN = sum)
+      names(df.sum) <- c("year","week","amount")
+    }
+    df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary))
+    return(df.sum.1)
+  })
+  whole_avg_cont_no <- reactive({
+    df <- contract()
+    if(input$reportty == "month"){
+      df.sum <- count(df,c("year","month"))
+      names(df.sum) <- c("year","month","no")
+    }else if(input$reportty == "week"){
+      df.sum <- count(df,c("year","week"))
+      names(df.sum) <- c("year","week","no")
+    }
+    df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary ))
+    return(df.sum.1)
+  })
+  whole_avg_prop <- reactive({
+    df <- proposal()
+    if(input$reportty == "month"){
+      df.sum <- aggregate(df$Amount..Net.of.Tax.,by = list(df$year,df$month),FUN = sum)
+      names(df.sum) <- c("year","month","amount")
+    }else if(input$reportty == "week"){
+      df.sum <- aggregate(df$Amount..Net.of.Tax.,by = list(df$year,df$week),FUN = sum)
+      names(df.sum) <- c("year","week","amount")
+    }
+    df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary))
+    return(df.sum.1)
+  })
+  whole_avg_prop_no <- reactive({
+    df <- proposal()
+    if(input$reportty == "month"){
+      df.sum <- count(df,c("year","month"))
+      names(df.sum) <- c("year","month","no")
+    }else if(input$reportty == "week"){
+      df.sum <- count(df,c("year","week"))
+      names(df.sum) <- c("year","week","no")
+    }
+    df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary ))
     return(df.sum.1)
   })
  
@@ -462,84 +635,110 @@ shinyServer(function(input, output,session) {
     
     if(input$level == "sales rep" & input$segLevel == "corporate"){
       mydf <- data.frame(Leads = c('Total Leads','Team Average','Personal Average'), 
-                         No = c(sum(leads1()$freq),mean(team_avg_leads()$leads)/num_corporate(),20), check.names = FALSE)
+                         No = c(sum(leads1()$freq),mean(team_avg_leads()$leads)/num_corporate(),
+                                mean(personal_avg_leads()$leads)), check.names = FALSE)
     }
     else if(input$level == "sales rep" & input$segLevel == "confex"){
       mydf <- data.frame(Leads = c('Total Leads','Team Average','Personal Average'), 
-                         No = c(sum(leads1()$freq),mean(team_avg_leads()$leads)/num_confex(),20), check.names = FALSE)
+                         No = c(sum(leads1()$freq),mean(team_avg_leads()$leads)/num_confex(),
+                                mean(personal_avg_leads()$leads)), check.names = FALSE)
     }
     else if(input$level == "segment"){
       mydf <- data.frame(Leads = c('Total Leads','Team Average','Whole Average'), 
-                         No = c(sum(leads1()$freq),mean(team_avg_leads()$leads),20), check.names = FALSE)
+                         No = c(sum(leads1()$freq),
+                                mean(team_avg_leads()$leads),
+                                mean(whole_avg_leads()$leads)), check.names = FALSE)
     }
-    
     return(mydf)
   })
   output$contract1 <- renderTable({
     if(input$level == "sales rep" & input$segLevel == "corporate"){
       mydf <- data.frame(contract = c('Total Contracts','Team Average','Personal Average'),
-                         No = c(nrow(contract1()),mean(team_avg_cont_no()$no)/num_corporate(),20),
+                         No = c(nrow(contract1()),
+                                mean(team_avg_cont_no()$no)/num_corporate(),
+                                mean(personal_avg_cont_no()$no)),
                          Amount = c(sum(contract1()$Amount..Net.of.Tax.),
-                                    mean(team_avg_cont()$amount)/num_corporate(),300),
+                                    mean(team_avg_cont()$amount)/num_corporate(),
+                                    mean(personal_avg_cont()$amount)),
                          check.names = FALSE)
     }else if(input$level == "sales rep"& input$segLevel == "confex"){
       mydf <- data.frame(contract = c('Total Contracts','Team Average','Personal Average'),
-                         No = c(nrow(contract1()),mean(team_avg_cont_no()$no)/num_confex(),20),
+                         No = c(nrow(contract1()),
+                                mean(team_avg_cont_no()$no)/num_confex(),
+                                mean(personal_avg_cont_no()$no)),
                          Amount = c(sum(contract1()$Amount..Net.of.Tax.),
-                                    mean(team_avg_cont()$amount)/num_confex(),300), check.names = FALSE)
+                                    mean(team_avg_cont()$amount)/num_confex(),
+                                    mean(personal_avg_cont()$amount)), check.names = FALSE)
     }
     else if(input$level == "segment"){
       mydf <- data.frame(contract = c('Total Contracts','Team Average','Whole Average'),
-                         No = c(nrow(contract1()),mean(team_avg_cont_no()$no),20),
+                         No = c(nrow(contract1()),mean(team_avg_cont_no()$no),
+                                mean(whole_avg_cont_no()$no)),
                          Amount = c(sum(contract1()$Amount..Net.of.Tax.),
-                                    mean(team_avg_cont()$amount),300), check.names = FALSE)
+                                    mean(team_avg_cont()$amount),
+                                    mean(whole_avg_cont()$amount)), check.names = FALSE)
     }
     return(mydf)
   })
   output$proposal1 <- renderTable({
     if(input$level == "sales rep" & input$segLevel == "corporate"){
       mydf <- data.frame(proposal = c('Total Proposals','Team Average','Personal Average'),
-                         No = c(nrow(proposal1()),mean(team_avg_prop_no()$no)/num_corporate(),20),
+                         No = c(nrow(proposal1()),
+                                mean(team_avg_prop_no()$no)/num_corporate(),
+                                mean(personal_avg_prop_no()$no)),
                          Amount = c(sum(proposal1()$Amount..Net.of.Tax.),
-                                    mean(team_avg_cont()$amount)/num_corporate(),300), check.names = FALSE)
+                                    mean(team_avg_cont()$amount)/num_corporate(),
+                                    mean(personal_avg_prop()$amount)), 
+                         check.names = FALSE)
       
     }
     else if(input$level == "sales rep" & input$segLevel == "confex"){
       mydf <- data.frame(proposal = c('Total Proposals','Team Average','Personal Average'),
-                         No = c(nrow(proposal1()),mean(team_avg_prop_no()$no)/num_confex(),20),
+                         No = c(nrow(proposal1()),
+                                mean(team_avg_prop_no()$no)/num_confex(),
+                                mean(personal_avg_prop_no()$no)),
                          Amount = c(sum(proposal1()$Amount..Net.of.Tax.),
-                                    mean(team_avg_cont()$amount)/num_confex(),300), check.names = FALSE)
-      
+                                    mean(team_avg_prop()$amount)/num_confex(),
+                                    mean(personal_avg_prop()$amount)),
+                         check.names = FALSE)
     }
     else if(input$level == "segment"){
       mydf <- data.frame(proposal = c('Total Proposals','Team Average','Whole Average'),
-                         No = c(nrow(proposal1()),mean(team_avg_prop_no()$no),20),
-                         Amount = c(sum(proposal1()$Amount..Net.of.Tax.),mean(team_avg_cont()$amount),300),
+                         No = c(nrow(proposal1()),
+                                mean(team_avg_prop_no()$no),
+                                mean(whole_avg_prop_no()$no)),
+                         Amount = c(sum(proposal1()$Amount..Net.of.Tax.),
+                                    mean(team_avg_prop()$amount),
+                                    mean(whole_avg_prop()$amount)),
                          check.names = FALSE)
     }
     return(mydf)
   })
   output$so1 <- renderTable({
     if(input$level == "sales rep" & input$segLevel == "corporate"){
-      mydf <- data.frame(SalesOrder = c('Total Sales Order','Team Average','Individual Average'),
+      mydf <- data.frame(SalesOrder = c('Total Sales Order','Team Average','Personal Average'),
                          No = c(nrow(so1()),
-                                mean(team_avg_so_no()$no)/num_corporate(),20),
+                                mean(team_avg_so_no()$no)/num_corporate(),
+                                mean(personal_avg_so_no()$no)),
                          Amount = c(sum(so1()$Maximum.of.Amount..Net.of.Tax.),
-                                    mean(team_avg_so()$amount)/num_corporate(),300), check.names = FALSE)
-      
+                                    mean(team_avg_so()$amount)/num_corporate(),
+                                    mean(personal_avg_so()$amount)), check.names = FALSE)
     }else if (input$level == "sales rep" & input$segLevel == "confex"){
-      mydf <- data.frame(SalesOrder = c('Total Sales Order','Team Average','Individual Average'),
+      mydf <- data.frame(SalesOrder = c('Total Sales Order','Team Average','Personal Average'),
                          No = c(nrow(so1()),
-                                mean(team_avg_so_no()$no)/num_confex(),20),
+                                mean(team_avg_so_no()$no)/num_confex(),
+                                mean(personal_avg_so_no()$no)),
                          Amount = c(sum(so1()$Maximum.of.Amount..Net.of.Tax.),
-                                    mean(team_avg_so()$amount)/num_confex(),300), check.names = FALSE)
+                                    mean(team_avg_so()$amount)/num_confex(),
+                                    mean(personal_avg_so()$amount)), check.names = FALSE)
     }
     else if(input$level == "segment"){
       mydf <- data.frame(SalesOrder = c('Total Sales Order','Team Average','Whole Average'),
                          No = c(nrow(so1()),
-                                mean(team_avg_so_no()$no),20),
+                                mean(team_avg_so_no()$no),mean(whole_avg_so_no()$no)),
                          Amount = c(sum(so1()$Maximum.of.Amount..Net.of.Tax.),
-                                    mean(team_avg_so()$amount),300), check.names = FALSE)
+                                    mean(team_avg_so()$amount),
+                                    mean(whole_avg_so()$amount)), check.names = FALSE)
     }
     return(mydf)
   })
