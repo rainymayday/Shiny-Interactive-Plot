@@ -51,8 +51,8 @@ shinyUI(navbarPage("Sales Activity Report",
                               
                               fluidRow(
                                 column(12,h5(strong('Plot Options')),
-                                       checkboxInput('avg_line','Compare with average level'),
-                                       checkboxInput("avg_self","Compare with self average level"),
+                                       checkboxInput('avg_line','Team Average'),
+                                       checkboxInput("avg_self","Individual Average"),
                                        downloadButton('downloadLeads','Download Leads Table'))
                               ))
                             ),
@@ -122,9 +122,9 @@ shinyUI(navbarPage("Sales Activity Report",
                                 column(12,
                                        h5(strong('Plot Options')),
                                        checkboxInput('avg_line_sale'
-                                                     ,'Compare with average level within segment'),
+                                                     ,'Team Average'),
                                        checkboxInput('avg_self_sale'
-                                                     ,'Compare with self average level'),
+                                                     ,'Individual Average'),
                                        downloadButton('downloadSales'
                                                       ,'Download Sales Table'))
                               ))
@@ -155,7 +155,6 @@ shinyUI(navbarPage("Sales Activity Report",
                               tabsetPanel(type = "tab",
                                           tabPanel("Highlights",
                                                    h2(textOutput("title")),
-                                                   br(),
                                                    fluidRow(
                                                      column(6,h3("Leads Summary"),
                                                             tableOutput("leads1")),
