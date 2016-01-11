@@ -58,7 +58,14 @@ shinyUI(navbarPage("Sales Activity Report",
                             ),
                             mainPanel(
                               tabsetPanel(type="tab",
-                                          tabPanel("LeadsPlot",plotOutput("LeadsPlot")),
+                                          tabPanel("LeadsPlot",
+                                                   plotOutput("LeadsPlot",hover=hoverOpts(
+                                                     id = "leads_hover",
+                                                     nullOutside = TRUE
+                                                   )
+                                                   ),
+                                                   verbatimTextOutput("info")
+                                                   ),
                                           tabPanel("LeadsTable",dataTableOutput("LeadsTable"))))),
                    tabPanel("Contract",
                             column(3,wellPanel(
@@ -84,7 +91,7 @@ shinyUI(navbarPage("Sales Activity Report",
                               
                             )),
                    tabPanel("Proposal",
-                            column(4,wellPanel(
+                            column(3,wellPanel(
                               uiOutput("segment_pro"),
                               uiOutput("Proposal_creator"),
                               uiOutput('dateRange_pro'),
@@ -147,7 +154,8 @@ shinyUI(navbarPage("Sales Activity Report",
                                 )),
                               uiOutput("year_summary"),
                               uiOutput("selectList"),
-                              selectInput("level","Level",choices = c("segment","sales rep")),
+                              selectInput("level","Level",choices = c("Segment","Sales Rep"),
+                                          selected = "Segment"),
                               uiOutput("segLevel"),
                               uiOutput("RepLevel")
                             )),

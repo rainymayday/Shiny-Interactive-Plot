@@ -6,10 +6,24 @@ library(ggplot2)
 library(plyr)
 library(scales)
 require(lubridate)
+library(ISOweek)
+
+if(!require(rCharts)){
+  require(devtools)
+  install_github('ramnathv/rCharts')
+  library(rCharts)
+}
+date_in_week <- function(year, week, weekday=7){
+  w <- paste0(year, "-W", sprintf("%02d", week), "-", weekday)
+  return(paste(ISOweek2date(w),ISOweek2date(w)+7,sep = " ~ "))
+}
+
 factor2numeric <- function(x){
   x.new <- as.numeric(gsub(",","",as.character(x)))
   return (x.new)
 }
+
+
 
 shinyServer(function(input, output,session) {
   # import data frame from uploaded csv
@@ -589,17 +603,20 @@ shinyServer(function(input, output,session) {
   })
   
   output$year_summary <- renderUI({
-    selectInput("year_summary","Choose the year you want:",choices = sort(proposal()$year))
+    selectInput("year_summary","Choose the year you want:",choices = sort(sales()$year))
   })
   output$selectList <- renderUI({
     validate(
       need(sales() != "","Please Upload sales table!")
     )
     if (input$reportty == "week"){
-      selectInput("list",input$reportty,choices = sort(week(sales()$Date.Created)))
+      selectInput("list",input$reportty,
+                  choices = sort(week(sales()$Date.Created)))
     }
     else if(input$reportty == "month"){
-      selectInput("list",input$reportty,choices = as.character(sort(month(sales()$Date.Created,label = TRUE))))
+      selectInput("list",input$reportty,
+                  choices = as.character(sort(month(sales()$Date.Created,
+                                                    label = TRUE))))
     }
   })
   output$segLevel <- renderUI({
@@ -636,21 +653,21 @@ shinyServer(function(input, output,session) {
   # tables in summary part
   output$leads1 <- renderTable({
     
-    if(input$level == "sales rep" & input$segLevel == "Corporate"){
+    if(input$level == "Sales Rep" & input$segLevel == "Corporate"){
       mydf <- data.frame(Leads = c('Total Leads','Team Average','Individual Average'), 
                          No = c(sum(leads1()$freq),
                                 mean(team_avg_leads()$leads)/num_corporate(),
                                 mean(personal_avg_leads()$leads)), 
                          check.names = FALSE)
     }
-    else if(input$level == "sales rep" & input$segLevel == "Confex"){
+    else if(input$level == "Sales Rep" & input$segLevel == "Confex"){
       mydf <- data.frame(Leads = c('Total Leads','Team Average','Individual Average'), 
                          No = c(sum(leads1()$freq),
                                 mean(team_avg_leads()$leads)/num_confex(),
                                 mean(personal_avg_leads()$leads)), 
                          check.names = FALSE)
     }
-    else if(input$level == "segment"){
+    else if(input$level == "Segment"){
       mydf <- data.frame(Leads = c('Total Leads','Team Average','Division Average'), 
                          No = c(sum(leads1()$freq),
                                 mean(team_avg_leads()$leads),
@@ -658,10 +675,10 @@ shinyServer(function(input, output,session) {
                          check.names = FALSE)
     }
     return(mydf)
-  })
+  },digits=1)
   output$contract1 <- renderTable({
-    if(input$level == "sales rep" & input$segLevel == "Corporate"){
-      mydf <- data.frame(contract = c('Total Contracts','Team Average','Individual Average'),
+    if(input$level == "Sales Rep" & input$segLevel == "Corporate"){
+      mydf <- data.frame(Contract = c('Total Contracts','Team Average','Individual Average'),
                          No = c(nrow(contract1()),
                                 mean(team_avg_cont_no()$no)/num_corporate(),
                                 mean(personal_avg_cont_no()$no)),
@@ -669,8 +686,8 @@ shinyServer(function(input, output,session) {
                                     mean(team_avg_cont()$amount)/num_corporate(),
                                     mean(personal_avg_cont()$amount)),
                          check.names = FALSE)
-    }else if(input$level == "sales rep"& input$segLevel == "Confex"){
-      mydf <- data.frame(contract = c('Total Contracts','Team Average','Individual Average'),
+    }else if(input$level == "Sales rep"& input$segLevel == "Confex"){
+      mydf <- data.frame(Contract = c('Total Contracts','Team Average','Individual Average'),
                          No = c(nrow(contract1()),
                                 mean(team_avg_cont_no()$no)/num_confex(),
                                 mean(personal_avg_cont_no()$no)),
@@ -678,8 +695,8 @@ shinyServer(function(input, output,session) {
                                     mean(team_avg_cont()$amount)/num_confex(),
                                     mean(personal_avg_cont()$amount)), check.names = FALSE)
     }
-    else if(input$level == "segment"){
-      mydf <- data.frame(contract = c('Total Contracts','Team Average','Division Average'),
+    else if(input$level == "Segment"){
+      mydf <- data.frame(Contract = c('Total Contracts','Team Average','Division Average'),
                          No = c(nrow(contract1()),
                                 mean(team_avg_cont_no()$no),
                                 mean(whole_avg_cont_no()$no)),
@@ -690,10 +707,10 @@ shinyServer(function(input, output,session) {
     mydf$Amount <- round(mydf$Amount,0)
     mydf$Amount <- paste("$",comma(mydf$Amount))
     return(mydf)
-  })
+  },digits=1)
   output$proposal1 <- renderTable({
-    if(input$level == "sales rep" & input$segLevel == "Corporate"){
-      mydf <- data.frame(proposal = c('Total Proposals','Team Average','Individual Average'),
+    if(input$level == "Sales Rep" & input$segLevel == "Corporate"){
+      mydf <- data.frame(Proposal = c('Total Proposals','Team Average','Individual Average'),
                          No = c(nrow(proposal1()),
                                 mean(team_avg_prop_no()$no)/num_corporate(),
                                 mean(personal_avg_prop_no()$no)),
@@ -701,10 +718,9 @@ shinyServer(function(input, output,session) {
                                     mean(team_avg_cont()$amount)/num_corporate(),
                                     mean(personal_avg_prop()$amount)), 
                          check.names = FALSE)
-      
     }
-    else if(input$level == "sales rep" & input$segLevel == "Confex"){
-      mydf <- data.frame(proposal = c('Total Proposals','Team Average','Individual Average'),
+    else if(input$level == "Sales Rep" & input$segLevel == "Confex"){
+      mydf <- data.frame(Proposal = c('Total Proposals','Team Average','Individual Average'),
                          No = c(nrow(proposal1()),
                                 mean(team_avg_prop_no()$no)/num_confex(),
                                 mean(personal_avg_prop_no()$no)),
@@ -713,8 +729,8 @@ shinyServer(function(input, output,session) {
                                     mean(personal_avg_prop()$amount)),
                          check.names = FALSE)
     }
-    else if(input$level == "segment"){
-      mydf <- data.frame(proposal = c('Total Proposals','Team Average','Division Average'),
+    else if(input$level == "Segment"){
+      mydf <- data.frame(Proposal = c('Total Proposals','Team Average','Division Average'),
                          No = c(nrow(proposal1()),
                                 mean(team_avg_prop_no()$no),
                                 mean(whole_avg_prop_no()$no)),
@@ -723,13 +739,13 @@ shinyServer(function(input, output,session) {
                                     mean(whole_avg_prop()$amount)),
                          check.names = FALSE)
     }
-
+    mydf$No <- round(mydf$No,0)
     mydf$Amount <- round(mydf$Amount,0)
     mydf$Amount <- paste("$",comma(mydf$Amount))
     return(mydf)
-  })
+  },digits=1)
   output$so1 <- renderTable({
-    if(input$level == "sales rep" & input$segLevel == "Corporate"){
+    if(input$level == "Sales Rep" & input$segLevel == "Corporate"){
       mydf <- data.frame(SalesOrder = c('Total Sales Order','Team Average','Individual Average'),
                          No = c(nrow(so1()),
                                 mean(team_avg_so_no()$no)/num_corporate(),
@@ -738,7 +754,7 @@ shinyServer(function(input, output,session) {
                                     mean(team_avg_so()$amount)/num_corporate(),
                                     mean(personal_avg_so()$amount)),
                          check.names = FALSE)
-    }else if (input$level == "sales rep" & input$segLevel == "Confex"){
+    }else if (input$level == "Sales Rep" & input$segLevel == "Confex"){
       mydf <- data.frame(SalesOrder = c('Total Sales Order','Team Average','Individual Average'),
                          No = c(nrow(so1()),
                                 mean(team_avg_so_no()$no)/num_confex(),
@@ -748,7 +764,7 @@ shinyServer(function(input, output,session) {
                                     mean(personal_avg_so()$amount)),
                          check.names = FALSE)
     }
-    else if(input$level == "segment"){
+    else if(input$level == "Segment"){
       mydf <- data.frame(SalesOrder = c('Total Sales Order','Team Average','Division Average'),
                          No = c(nrow(so1()),
                                 mean(team_avg_so_no()$no),
@@ -761,7 +777,7 @@ shinyServer(function(input, output,session) {
     mydf$Amount <- round(mydf$Amount,0)
     mydf$Amount <- paste("$",comma(mydf$Amount))
     return(mydf)
-  })
+  },digits=1)
 
   # update sales rep based on selected segment
   observe({
@@ -936,9 +952,11 @@ shinyServer(function(input, output,session) {
              plotty= geom_bar(size = 1.2,fill= "#00CCCC",stat="identity")
            }
     )
-    p <- ggplot(data = leads_data,mapping = aesthetics1)+
-      plotty+geom_point(size = 1.5)
     
+   
+    p <- ggplot(data = leads_data,mapping = aesthetics1)+
+      plotty+geom_point(size = 1.5)+
+      scale_y_continuous(labels = comma)
     if(input$avg_line){
       p <- p+
         geom_line(mapping = aes(x=Date, y=Leads,group = "avg")
@@ -954,6 +972,15 @@ shinyServer(function(input, output,session) {
       theme(axis.text.x = element_text(angle = 45, hjust = 1))
     return(p)
      
+  })
+  
+  output$info <- renderText({
+    xy_str <- function(e) {
+      if(is.null(e)) return("NULL\n")
+      paste(c(input$plotty,"No of Leads:"),c(round(e$x,1),round(e$y,1)),collapse = "\n")
+    }
+  
+    xy_str(input$leads_hover)
   })
   output$SalesPlot <- renderPlot({
     validate(
@@ -1012,7 +1039,8 @@ shinyServer(function(input, output,session) {
     
     p <- ggplot(data,aesthetics1)+
       plotty+
-      geom_point(aesthetics1,data,size = 1.5,colour = "#000033")
+      geom_point(aesthetics1,data,size = 1.5,colour = "#000033")+
+      scale_y_continuous(labels = comma)
     
     if(input$avg_line_sale){
       p <- p+geom_line(mapping = aes(x=Date, y=`Sales Amount`,group = "avg")
@@ -1082,7 +1110,8 @@ shinyServer(function(input, output,session) {
       xlab(xlabtxt)+
       ylab("Total Amount")+
       theme_bw()+
-      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+      scale_y_continuous(labels = comma)
     return(p)
   })
   output$ProposalPlots <- renderPlot({
@@ -1132,25 +1161,34 @@ shinyServer(function(input, output,session) {
       xlab(xlabtxt)+
       ylab("Total Amount")+
       theme_bw()+
-      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+      scale_y_continuous(labels = comma)
     return(p)
   })
   
   # Title in the summary part
   output$title <- renderText(
+    
     if (input$reportty=="month" ){
-      if(input$level == "segment"){
-        paste(paste(input$year_summary,input$list,"Summary Report by",input$level,sep = " "),input$segLevel,sep=":")  
+      if(input$level == "Segment"){
+        paste(paste(input$year_summary,input$list,"Summary Report by",input$level,sep = " "),
+              input$segLevel,sep=":")  
       }
-      else if (input$level == "sales rep"){
-        paste(paste(input$year_summary,input$list,"Summary Report by",input$level,sep = " "),input$RepLevel,sep=":")
+      else if (input$level == "Sales Rep"){
+        paste(paste(input$year_summary,input$list,"Summary Report by",input$level,sep = " "),
+              input$RepLevel,sep=":")
       }
     }else if (input$reportty =="week"){
-      if(input$level == "segment"){
-        paste(paste(input$year_summary,"Week",input$list,"Summary Report by",input$level,sep = " "),input$segLevel,sep=":")  
+      validate(need(input$list !="","select week"))
+      if(input$level == "Segment"){
+        paste(paste(input$year_summary,"Week",input$list,
+                    "(",date_in_week(as.numeric(input$year_summary),as.numeric(input$list)),")",
+                    "Summary Report by",input$level,sep = " "),input$segLevel,sep=":")  
       }
-      else if (input$level == "sales rep"){
-        paste(paste(input$year_summary,"Week",input$list,"Summary Report by",input$level,sep = " "),input$RepLevel,sep=":")
+      else if (input$level == "Sales Rep"){
+        paste(paste(input$year_summary,"Week",input$list,
+                    "(",date_in_week(as.numeric(input$year_summary),as.numeric(input$list)),")",
+                    "Summary Report by",input$level,sep = " "),input$RepLevel,sep=":")
         
       } 
     }
