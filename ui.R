@@ -1,4 +1,6 @@
 library(shiny)
+require(rCharts)
+options(RCHART_LIB = 'polycharts')
 shinyUI(navbarPage("Sales Activity Report",
                    tabPanel("Upload Data File For Analysis",
                             column(3, wellPanel(
@@ -58,15 +60,9 @@ shinyUI(navbarPage("Sales Activity Report",
                             ),
                             mainPanel(
                               tabsetPanel(type="tab",
-                                          tabPanel("LeadsPlot",
-                                                   plotOutput("LeadsPlot",hover=hoverOpts(
-                                                     id = "leads_hover",
-                                                     nullOutside = TRUE
-                                                   )
-                                                   ),
-                                                   verbatimTextOutput("info")
-                                                   ),
-                                          tabPanel("LeadsTable",dataTableOutput("LeadsTable"))))),
+                                          tabPanel("LeadsPlot",showOutput("LeadsPlot","dimple")),
+                                          tabPanel("LeadsTable",dataTableOutput("LeadsTable"))
+                                          ))),
                    tabPanel("Contract",
                             column(3,wellPanel(
                               uiOutput("segment_con"),
@@ -138,7 +134,7 @@ shinyUI(navbarPage("Sales Activity Report",
                             ),
                             mainPanel(
                               tabsetPanel(type="tab",
-                                          tabPanel("SalesPlot",plotOutput("SalesPlot")),
+                                          tabPanel("SalesPlot",showOutput("SalesPlot","Highcharts")),
                                           tabPanel("SalesTable",dataTableOutput("SalesTable"))
                                           
                               ))

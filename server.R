@@ -7,23 +7,21 @@ library(plyr)
 library(scales)
 require(lubridate)
 library(ISOweek)
-
 if(!require(rCharts)){
   require(devtools)
   install_github('ramnathv/rCharts')
   library(rCharts)
 }
+require(rCharts)
+options(RCHART_LIB = 'polycharts')
 date_in_week <- function(year, week, weekday=7){
   w <- paste0(year, "-W", sprintf("%02d", week), "-", weekday)
   return(paste(ISOweek2date(w),ISOweek2date(w)+7,sep = " ~ "))
 }
-
 factor2numeric <- function(x){
   x.new <- as.numeric(gsub(",","",as.character(x)))
   return (x.new)
 }
-
-
 
 shinyServer(function(input, output,session) {
   # import data frame from uploaded csv
@@ -70,7 +68,7 @@ shinyServer(function(input, output,session) {
     isolate({
       sales <- read.csv(infile$datapath)
       sales <- subset(sales,sales$Sales.Rep.2 %in% as.character(salesrep()$sale_rep))
-      col <- c("Date.Created","Name","Sales.Rep.2","Event.Name"
+      col <- c("SO.Number","Date.Created","Name","Sales.Rep.2","Event.Name"
                ,"Maximum.of.Amount..Net.of.Tax.")
       sales <- sales[,col]
       sales$Maximum.of.Amount..Net.of.Tax. <- factor2numeric(sales$Maximum.of.Amount..Net.of.Tax.)
@@ -809,17 +807,17 @@ shinyServer(function(input, output,session) {
                     by = list(leads()$year,leads()$Date.Created,leads()$segment),
                     FUN = sum)
     names(df) <- c("Year","Date","Segment","Leads")
-    df$Leads[df$Segment == "confex"] <- df$Leads[df$Segment == "confex"]/num_confex()
-    df$Leads[df$Segment == "corporate"] <- df$Leads[df$Segment == "corporate"]/num_corporate()
+    df$Leads[df$Segment == "Confex"] <- df$Leads[df$Segment == "Confex"]/num_confex()
+    df$Leads[df$Segment == "Corporate"] <- df$Leads[df$Segment == "Corporate"]/num_corporate()
     return(df)
   })
   leads_avg_week <- reactive({
     leads_avg_week <- aggregate(leads()$freq
               ,by = list(leads()$year,leads()$week,leads()$segment)
               ,FUN=sum)
-    names(leads_avg_week) <- c("Year","Date","Segment","Leads")
-    leads_avg_week$Leads[leads_avg_week$Segment == "confex"] <- leads_avg_week$Leads[leads_avg_week$Segment == "confex"]/num_confex()
-    leads_avg_week$Leads[leads_avg_week$Segment == "corporate"] <- leads_avg_week$Leads[leads_avg_week$Segment == "corporate"]/num_corporate()
+    names(leads_avg_week) <- c("Year","Week","Segment","Leads")
+    leads_avg_week$Leads[leads_avg_week$Segment == "Confex"] <- leads_avg_week$Leads[leads_avg_week$Segment == "Confex"]/num_confex()
+    leads_avg_week$Leads[leads_avg_week$Segment == "Corporate"] <- leads_avg_week$Leads[leads_avg_week$Segment == "Corporate"]/num_corporate()
     return(leads_avg_week)
     
   })
@@ -827,9 +825,9 @@ shinyServer(function(input, output,session) {
     leads_avg_month <- aggregate(leads()$freq,
                                  by = list(leads()$year,leads()$month,leads()$segment),
                                  FUN = sum)
-    names(leads_avg_month) <- c("Year","Date","Segment","Leads")
-    leads_avg_month$Leads[leads_avg_month$Segment == "confex"] <- leads_avg_month$Leads[leads_avg_month$Segment == "confex"]/num_confex()
-    leads_avg_month$Leads[leads_avg_month$Segment == "corporate"] <- leads_avg_month$Leads[leads_avg_month$Segment == "corporate"]/num_corporate()
+    names(leads_avg_month) <- c("Year","Month","Segment","Leads")
+    leads_avg_month$Leads[leads_avg_month$Segment == "Confex"] <- leads_avg_month$Leads[leads_avg_month$Segment == "Confex"]/num_confex()
+    leads_avg_month$Leads[leads_avg_month$Segment == "Corporate"] <- leads_avg_month$Leads[leads_avg_month$Segment == "Corporate"]/num_corporate()
     return(leads_avg_month)
   })
   sales_avg_day <- reactive({
@@ -837,8 +835,8 @@ shinyServer(function(input, output,session) {
                                ,by = list(sales()$year,sales()$Date.Created,sales()$segment)
                                ,FUN = sum)
     names(sales_avg_day) <- c("Year","Date","Segment","Sales Amount")
-    sales_avg_day$`Sales Amount`[sales_avg_day$Segment == "confex"] <- sales_avg_day$`Sales Amount`[sales_avg_day$Segment == "confex"]/num_confex()
-    sales_avg_day$`Sales Amount`[sales_avg_day$Segment == "corporate"] <- sales_avg_day$`Sales Amount`[sales_avg_day$Segment == "corporate"]/num_corporate()
+    sales_avg_day$`Sales Amount`[sales_avg_day$Segment == "Confex"] <- sales_avg_day$`Sales Amount`[sales_avg_day$Segment == "Confex"]/num_confex()
+    sales_avg_day$`Sales Amount`[sales_avg_day$Segment == "Corporate"] <- sales_avg_day$`Sales Amount`[sales_avg_day$Segment == "Corporate"]/num_corporate()
     return (sales_avg_day)
   })
   sales_avg_week <- reactive({
@@ -846,8 +844,8 @@ shinyServer(function(input, output,session) {
                                 ,by = list(sales()$year,sales()$week,sales()$segment)
                                 ,FUN = sum)
     names(sales_avg_week) <- c("Year","Date","Segment","Sales Amount")
-    sales_avg_week$`Sales Amount`[sales_avg_week$Segment == "confex"] <- sales_avg_week$`Sales Amount`[sales_avg_week$Segment == "confex"]/num_confex()
-    sales_avg_week$`Sales Amount`[sales_avg_week$Segment == "corporate"] <- sales_avg_week$`Sales Amount`[sales_avg_week$Segment == "corporate"]/num_corporate()
+    sales_avg_week$`Sales Amount`[sales_avg_week$Segment == "Confex"] <- sales_avg_week$`Sales Amount`[sales_avg_week$Segment == "Confex"]/num_confex()
+    sales_avg_week$`Sales Amount`[sales_avg_week$Segment == "Corporate"] <- sales_avg_week$`Sales Amount`[sales_avg_week$Segment == "Corporate"]/num_corporate()
     return(sales_avg_week)
   })
   sales_avg_month <- reactive({
@@ -855,209 +853,11 @@ shinyServer(function(input, output,session) {
                     ,by = list(sales()$year,sales()$month,sales()$segment)
                     ,FUN = sum)
     names(df) <- c("Year","Date","Segment","Sales Amount")
-    df$`Sales Amount`[df$Segment == "confex"] <- df$`Sales Amount`[df$Segment == "confex"]/num_confex()
-    df$`Sales Amount`[df$Segment == "corporate"] <- df$`Sales Amount`[df$Segment == "corporate"]/num_corporate()
+    df$`Sales Amount`[df$Segment == "Confex"] <- df$`Sales Amount`[df$Segment == "Confex"]/num_confex()
+    df$`Sales Amount`[df$Segment == "Corporate"] <- df$`Sales Amount`[df$Segment == "Corporate"]/num_corporate()
     return(df)
   })
   
-  # calculate avg level by now
-  leads_avg_rep <- reactive({
-    df <- leads()
-    if(input$plotty =="week"){
-      df <- aggregate(df$freq,by = list(df$year,df$week,df$Lead.Generator),FUN= sum)
-      names(df) <- c("Year","Week","Lead.Generator","Leads")
-    }
-    else if(input$plotty =="day"){
-      df <- aggregate(df$freq,by = list(df$year,df$Date.Created,df$Lead.Generator),FUN= sum)
-      names(df) <- c("Year","Date","Lead.Generator","Leads")
-    }
-    else if (input$plotty == "month"){
-      df <- aggregate(df$freq,by = list(df$year,df$month,df$Lead.Generator),FUN = sum)
-      names(df) <- c("Year","Month","Lead.Generator","Leads")
-    }
-    return(df)
-  })
-  sales_avg_rep <- reactive({
-    df <- sales()
-    if(input$plotty_sale =="week"){
-      df <- aggregate(df$Maximum.of.Amount..Net.of.Tax.,
-                      by = list(df$year,df$week,df$Sales.Rep.2),FUN= sum)
-      names(df) <- c("Year","Week","Sales.Rep","Amount")
-    }else if (input$plotty_sale == "day"){
-      df <- aggregate(df$Maximum.of.Amount..Net.of.Tax.,
-                      by = list(df$year,df$Date.Created,df$Sales.Rep.2),FUN= sum)
-      names(df) <- c("Year","Date","Sales.Rep","Amount")
-    }else if(input$plotty_sale == "month"){
-      df <- aggregate(df$Maximum.of.Amount..Net.of.Tax.,
-                      by = list(df$year,df$month,df$Sales.Rep.2),FUN= sum)
-      names(df) <- c("Year","Month","Sales.Rep","Amount")
-    }
-    return(df)
-    
-  })
-
-
-  # show plots in each module
-  output$LeadsPlot <- renderPlot({
-    validate(
-      need(leads() != "","Please Upload leads table!")
-      )
-    validate(
-      need(input$LeadsGen != "","Please select sales rep you want to see")
-    )
-    data <-subset(leads(),trimws(Lead.Generator,"both") %in% trimws(input$LeadsGen,"both"))
-    leads_sub <- subset(data,as.Date(as.character(Date.Created)) >= input$dateRange[1]&as.Date(as.character(Date.Created)) <= input$dateRange[2])
-    
-    data.week <- aggregate(data$freq, by = list(data$year,data$week),FUN = sum)
-    names(data.week) <- c("year","week","leads")
-    data.week <- subset(data.week,trimws(data.week$year,"both") == trimws(input$year,"both"))
-    
-    data.month <- aggregate(data$freq, by = list(data$year,data$month),FUN = sum)
-    names(data.month) <- c("year","month","leads")
-    data.month <- subset(data.month,trimws(data.month$year,"both") == trimws(input$year,"both"))
-    
-
-    leads_avg_day <- subset(leads_avg_day(),trimws(Segment,"both") == trimws(input$segment,"both") )
-    leads_avg_day <- subset(leads_avg_day
-                            ,as.Date(Date) >= input$dateRange[1]&as.Date(Date) <= input$dateRange[2])
-    
-    leads_avg_week <- subset(leads_avg_week(),trimws(Segment,"both") ==trimws(input$segment,"both"))
-    leads_avg_week <- subset(leads_avg_week,leads_avg_week$Year == input$year)
-    
-    leads_avg_month <- subset(leads_avg_month(),trimws(Segment,"both") ==trimws(input$segment,"both"))
-    leads_avg_month <- subset(leads_avg_month,leads_avg_month$Year == input$year)
-
-    leads_avg_rep <- subset(leads_avg_rep(),leads_avg_rep()$Lead.Generator %in% input$LeadsGen)
-    avg_self = mean(leads_avg_rep$Leads)
-    switch(input$plotty,
-           "week" = {
-             aesthetics1 = aes(x=data.week[,2], y=data.week[,3])
-             leads_data = data.week
-             xlabtxt = "Week"
-             avg = leads_avg_week
-             plotty= geom_bar(size = 1.2,fill= "#00CCCC",stat="identity")
-             },
-           "day"  = {
-             aesthetics1 = aes(x=Date.Created, y=freq,group = "day")
-             leads_data = leads_sub
-             xlabtxt = "Day"
-             avg = leads_avg_day
-             plotty = geom_line(aesthetics1,data = leads_data,size = 1.2,colour = "#00CCCC")
-           },
-           "month" = {
-             aesthetics1 = aes(x=data.month[,2], y=data.month[,3])
-             leads_data = data.month
-             xlabtxt = "month"
-             avg = leads_avg_month
-             plotty= geom_bar(size = 1.2,fill= "#00CCCC",stat="identity")
-           }
-    )
-    
-   
-    p <- ggplot(data = leads_data,mapping = aesthetics1)+
-      plotty+geom_point(size = 1.5)+
-      scale_y_continuous(labels = comma)
-    if(input$avg_line){
-      p <- p+
-        geom_line(mapping = aes(x=Date, y=Leads,group = "avg")
-                  ,data = avg,colour = "#CC0033",size = 0.8,linetype = 6,show.legend = TRUE)
-    }
-    if(input$avg_self){
-      p <- p+geom_hline(yintercept = avg_self,colour = "darkgreen",size = 1,show.legend = TRUE)
-    }
-    p <- p+ggtitle(paste("Leads Generated by",input$LeadsGen))+
-      xlab(xlabtxt)+
-      ylab("No of Leads")+
-      theme_bw()+
-      theme(axis.text.x = element_text(angle = 45, hjust = 1))
-    return(p)
-     
-  })
-  
-  output$info <- renderText({
-    xy_str <- function(e) {
-      if(is.null(e)) return("NULL\n")
-      paste(c(input$plotty,"No of Leads:"),c(round(e$x,1),round(e$y,1)),collapse = "\n")
-    }
-  
-    xy_str(input$leads_hover)
-  })
-  output$SalesPlot <- renderPlot({
-    validate(
-      need(sales() != "","Please Upload sales table!")
-    )
-    validate(
-      need(input$sales_rep != "","Please select sales rep you want to see")
-    )
-   
-    data <- subset(sales(),trimws(Sales.Rep.2,"both") %in% trimws(input$sales_rep,"both"))
-    sales <- subset(data,as.Date(as.character(Date.Created)) >= input$dateRange_sale[1]&as.Date(as.character(Date.Created)) <= input$dateRange[2])
-    
-    sales.day <- aggregate(sales$Maximum.of.Amount..Net.of.Tax.,by = list(sales$Date.Created),FUN = sum)
-    names(sales.day) <- c("Date","Amount")
-    
-    sales.week <- aggregate(data$Maximum.of.Amount..Net.of.Tax.,by = list(data$year,data$week),FUN = sum)
-    names(sales.week) <- c("Year","Week","Amount")
-    sales.month <- aggregate(data$Maximum.of.Amount..Net.of.Tax.,by = list(data$year,data$month),FUN = sum)
-    names(sales.month) <- c("Year","Month","Amount")
-    
-    sales.week <- subset(sales.week,trimws(sales.week$Year,"both") %in% trimws(input$year_sale,"both"))
-    sales.month <-subset(sales.month,trimws(sales.month$Year,"both") %in% trimws(input$year_sale,"both"))
-  
-    sales_avg_day <- subset(sales_avg_day(),trimws(Segment,"both") %in% trimws(input$segment_sale,"both"))
-    sales_avg_day <- subset(sales_avg_day,
-                            as.Date(Date) >= input$dateRange_sale[1]&as.Date(Date) <= input$dateRange_sale[2])
-    sales_avg_week <- subset(sales_avg_week(),trimws(Segment,"both") %in% trimws(input$segment_sale,"both"))
-    sales_avg_week <- subset(sales_avg_week,trimws(sales_avg_week$Year,"both") %in% trimws(input$year_sale,"both"))
-    
-    sales_avg_month <- subset(sales_avg_month(),trimws(Segment,"both") %in% trimws(input$segment_sale,"both"))
-    sales_avg_month <- subset(sales_avg_month,trimws(sales_avg_month$Year,"both") %in% trimws(input$year_sale,"both"))
-    
-    sales_avg_rep <- subset(sales_avg_rep(),sales_avg_rep()$Sales.Rep %in% input$sales_rep)
-    avg_self <- mean(sales_avg_rep$Amount)
-    switch(input$plotty_sale,
-           "month" = {
-             aesthetics1 = aes(x=sales.month[,2], y= sales.month[,3],group = "week")
-             data = sales.month
-             xlabtxt = "Month"
-             avg = sales_avg_month
-             plotty= geom_bar(size = 1.2,fill= "#00CCCC",stat="identity") 
-           },
-           "week" = {
-             aesthetics1 = aes(x=sales.week[,2], y= sales.week[,3],group = "week")
-             data = sales.week
-             xlabtxt = "Week"
-             avg = sales_avg_week
-             plotty= geom_bar(size = 1.2,fill= "#00CCCC",stat="identity")},
-           "day"  = {
-             aesthetics1 = aes(x=sales.day[,1], y= sales.day[,2],group = "day")
-             data = sales.day
-             xlabtxt = "Day"
-             avg = sales_avg_day
-             plotty = geom_line(size = 1.2,colour = "#3399FF")}
-    )
-    
-    p <- ggplot(data,aesthetics1)+
-      plotty+
-      geom_point(aesthetics1,data,size = 1.5,colour = "#000033")+
-      scale_y_continuous(labels = comma)
-    
-    if(input$avg_line_sale){
-      p <- p+geom_line(mapping = aes(x=Date, y=`Sales Amount`,group = "avg")
-                       ,data = avg,colour = "#CC0033",size = 0.8,linetype = 6)
-    }
-    if(input$avg_self_sale){
-      p <- p+geom_hline(yintercept = avg_self,colour = "darkgreen",size = 1,show.legend = TRUE)
-    }
-    
-    
-    p <- p+ggtitle(paste("Sales Generated by",input$sales_rep))+
-      xlab(xlabtxt)+
-      ylab("Sales Amount")+
-      theme_bw()+
-      theme(axis.text.x = element_text(angle = 45, hjust = 1))
-    return (p)
-  })
   output$ContractPlots <- renderPlot({
     validate(
       need(contract() != "","Please Upload contract table!")
@@ -1165,10 +965,170 @@ shinyServer(function(input, output,session) {
       scale_y_continuous(labels = comma)
     return(p)
   })
-  
+  output$LeadsPlot <- renderChart2({
+    data <-subset(leads(),trimws(Lead.Generator,"both") %in% trimws(input$LeadsGen,"both"))
+    if(input$plotty == "month"){
+      data.month <- aggregate(data$freq, by = list(data$year,data$month),FUN = sum)
+      names(data.month) <- c("year","month","leads")
+      data.month <- subset(data.month,trimws(data.month$year,"both") == trimws(input$year,"both"))
+      data.month$avg <- mean(data.month$leads)
+      data.month$month <- as.character(sort(data.month$month))
+      leads_avg_month <- subset(leads_avg_month(),trimws(Segment,"both") ==trimws(input$segment,"both"))
+      leads_avg_month <- subset(leads_avg_month,leads_avg_month$Year == input$year)
+      P <- dPlot(x = "month", y = "leads", data = data.month, type = 'bar',groups="Total Leads")
+      P$xAxis(orderRule = data.month$month)
+      
+      if(input$avg_line){
+        P$layer(x="Month",y="Leads",data=leads_avg_month, type='line',groups = "Team Average")
+      }
+      if(input$avg_self){
+        P$layer(x="month",y= "avg",data = data.month,type='line',groups = "Individual Average")
+      }
+      P$legend(x = 60, y = 10, width = 620, height = 20,
+               horizontalAlign = "right")
+      P$yAxis('No of Leads',overrideMin = 0, overrideMax = max(max(leads_avg_month$Leads),max(data.month$avg),max(data.month$leads)))
+      return(P)
+    }
+    else if(input$plotty == "week"){
+      data.week <- aggregate(data$freq, by = list(data$year,data$week),FUN = sum)
+      names(data.week) <- c("year","week","leads")
+      data.week <- subset(data.week,trimws(data.week$year,"both") == trimws(input$year,"both"))
+      data.week$avg <- mean(data.week$leads)
+      data.week$week <- as.character(sort(data.week$week))
+      leads_avg_week <- subset(leads_avg_week(),trimws(Segment,"both") %in% trimws(input$segment,"both"))
+      leads_avg_week <- subset(leads_avg_week,leads_avg_week$Year == input$year)
+      P <- dPlot(x = "week", y = "leads", data = data.week, type = 'bar',groups="Total Leads")
+      P$xAxis(orderRule = data.week$week)
+      if(input$avg_line){
+        P$layer(x="Week",y="Leads",data=leads_avg_week, type='line',groups = "Team Average")  
+      }
+      if(input$avg_self){
+        P$layer(x="week",y= "avg",data = data.week,type='line',groups = "Individual Average")
+      }
+      P$legend(x = 60, y = 10, width = 620, height = 20,
+               horizontalAlign = "right")
+      P$yAxis('No of Leads',overrideMin = 0, overrideMax = max(max(leads_avg_week$Leads),max(data.week$avg),max(data.week$leads)))
+      return(P)
+    }
+    else if(input$plotty =="day"){
+      leads_sub <- subset(data,as.Date(Date.Created) >= input$dateRange[1]&as.Date(Date.Created) <= input$dateRange[2])
+      leads_sub$avg <- mean(leads_sub$freq)##argument is not numeric or logical
+      leads_avg_day <- subset(leads_avg_day(),trimws(Segment,"both") == trimws(input$segment,"both") )
+      leads_avg_day <- subset(leads_avg_day,as.Date(Date) >= input$dateRange[1]&as.Date(Date) <= input$dateRange[2])
+      P <- dPlot(x = "Date.Created",y = "freq",data= leads_sub,type = "line",groups = "Total Leads")
+      if(input$avg_line){
+        P$layer(x="Date",y="Leads", data = leads_avg_day, type = 'line',groups = "Team Average")  
+      }
+      if(input$avg_self){
+        P$layer(x ="Date.Created",y = "avg",data=leads_sub,type ="line",groups = "Individual Average")
+      }
+      P$legend(x = 60, y = 10, width = 620, height = 20,
+               horizontalAlign = "right")
+    }
+    P$yAxis('No of Leads',overrideMin = 0, overrideMax = max(max(leads_avg_day$Leads),max(leads_sub$avg),max(leads_sub$freq)))
+    return(P)
+  })
+  output$SalesPlot <- renderChart2({
+    data <- subset(sales(),trimws(Sales.Rep.2,"both") %in% trimws(input$sales_rep,"both"))
+    if(input$plotty_sale =="month"){
+      sales.month <- aggregate(data$Maximum.of.Amount..Net.of.Tax.,by = list(data$year,data$month),FUN = sum)
+      names(sales.month) <- c("Year","Month","Amount")
+      sales.month.no <- aggregate(data$SO.Number,by =list(data$year,data$month),FUN = length) 
+      sales.month$No <- sales.month.no[,3]
+      sales.month <-subset(sales.month,trimws(sales.month$Year,"both") %in% trimws(input$year_sale,"both"))
+      sales_avg_month <- subset(sales_avg_month(),trimws(Segment,"both") %in% trimws(input$segment_sale,"both"))
+      sales_avg_month <- subset(sales_avg_month,trimws(sales_avg_month$Year,"both") %in% trimws(input$year_sale,"both"))
+      sales.month$avg_amount <- mean(sales.month$Amount)
+      h <- Highcharts$new()
+      h$xAxis(categories = sales.month$Month)
+      h$yAxis(list(list(title = list(text = 'Sales Amount'))
+                   , list(title = list(text = 'Sales No'), opposite = TRUE)
+      )
+      )
+      h$series(name = 'Sales Amount', type = 'column', color = '#4572A7',
+               data = sales.month$Amount)
+      h$series(name = 'Sales No', type = 'scatter', color = '#89A54E',
+               data = sales.month$No,
+               yAxis = 1)
+      h$plotOptions(scatter = list(dataLabels = list(enabled = TRUE)))
+      if (input$avg_line_sale){
+        h$series(name = "Team Average", type = 'spline', color = "orange",
+                 data = sales_avg_month$`Sales Amount`)
+        
+      }
+      if(input$avg_self_sale){
+        h$series(name = "Individual Average", type = 'spline', color = "red",
+                 data = sales.month$avg_amount)      
+      }
+      return(h)
+
+    }
+    else if(input$plotty_sale == "week"){
+      sales.week <- aggregate(data$Maximum.of.Amount..Net.of.Tax.,by = list(data$year,data$week),FUN = sum)
+      names(sales.week) <- c("Year","Week","Amount")
+      sales.week.no <- aggregate(data$SO.Number,by =list(data$year,data$week),FUN = length)
+      sales.week$No <- sales.week.no[,3]
+      sales.week <- subset(sales.week,trimws(sales.week$Year,"both") %in% trimws(input$year_sale,"both"))
+      sales_avg_week <- subset(sales_avg_week(),trimws(Segment,"both") %in% trimws(input$segment_sale,"both"))
+      sales_avg_week <- subset(sales_avg_week,trimws(sales_avg_week$Year,"both") %in% trimws(input$year_sale,"both"))
+      sales.week$avg_amount <- mean(sales.week$Amount)
+      h <- Highcharts$new()
+      h$xAxis(categories = sales.week$Week)
+      h$yAxis(list(list(title = list(text = 'Sales Amount'))
+                   , list(title = list(text = 'Sales No'), opposite = TRUE)
+      )
+      )
+      h$series(name = 'Sales Amount', type = 'column', color = '#4572A7',
+               data = sales.week$Amount)
+      h$series(name = 'Sales No', type = 'scatter', color = '#89A54E',
+               data = sales.week$No,
+               yAxis = 1)
+      if (input$avg_line_sale){
+        h$series(name = "Team Average", type = 'spline', color = "orange",
+                 data = sales_avg_week$`Sales Amount`)
+        
+      }
+      if(input$avg_self_sale){
+        h$series(name = "Individual Average", type = 'spline', color = "red",
+                 data = sales.week$avg_amount)      
+      }
+      h$plotOptions(scatter = list(dataLabels = list(enabled = TRUE)))
+      return(h)
+    }
+    else if(input$plotty_sale == "day"){
+      sales <- subset(data,as.Date(Date.Created) >= input$dateRange_sale[1]&as.Date(Date.Created) <= input$dateRange[2])
+      sales.day <- aggregate(sales$Maximum.of.Amount..Net.of.Tax.,by = list(sales$Date.Created),FUN = sum)
+      names(sales.day) <- c("Date","Amount")
+      sales.day.no <- aggregate(sales$SO.Number,by = list(sales$Date.Created),FUN = length)
+      sales.day$No <- sales.day.no[,2]
+      sales_avg_day <- subset(sales_avg_day(),trimws(Segment,"both") %in% trimws(input$segment_sale,"both"))
+      sales_avg_day <- subset(sales_avg_day,
+                              as.Date(Date) >= input$dateRange_sale[1]&as.Date(Date) <= input$dateRange_sale[2])
+      sales.day$avg_amount <- mean(sales.day$Amount)
+      h <- Highcharts$new()
+      h$xAxis(categories = sales.day$Date)
+      h$yAxis(list(list(title = list(text = 'Sales Amount'))
+                   , list(title = list(text = 'Sales No'), opposite = TRUE)
+      )
+      )
+      h$series(name = 'Sales Amount', type = 'spline', color = '#4572A7',
+               data = sales.day$Amount,groups = "Total Sales Amount")
+      h$series(name = 'Sales No', type = 'scatter', color = '#89A54E',data = sales.day$No,yAxis = 1)
+      if (input$avg_line_sale){
+        h$series(name = "Team Average", type = 'spline', color = "orange",
+                 data = sales_avg_day$`Sales Amount`)
+        
+      }
+      if(input$avg_self_sale){
+        h$series(name = "Individual Average", type = 'spline', color = "red",
+                 data = sales.day$avg_amount)      
+      }
+      h$plotOptions(scatter = list(dataLabels = list(enabled = TRUE)))
+      return(h)
+    }
+  })
   # Title in the summary part
   output$title <- renderText(
-    
     if (input$reportty=="month" ){
       if(input$level == "Segment"){
         paste(paste(input$year_summary,input$list,"Summary Report by",input$level,sep = " "),
@@ -1189,7 +1149,6 @@ shinyServer(function(input, output,session) {
         paste(paste(input$year_summary,"Week",input$list,
                     "(",date_in_week(as.numeric(input$year_summary),as.numeric(input$list)),")",
                     "Summary Report by",input$level,sep = " "),input$RepLevel,sep=":")
-        
       } 
     }
     )
