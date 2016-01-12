@@ -843,7 +843,7 @@ shinyServer(function(input, output,session) {
     sales_avg_week <- aggregate(sales()$Maximum.of.Amount..Net.of.Tax.
                                 ,by = list(sales()$year,sales()$week,sales()$segment)
                                 ,FUN = sum)
-    names(sales_avg_week) <- c("Year","Date","Segment","Sales Amount")
+    names(sales_avg_week) <- c("Year","Week","Segment","Sales Amount")
     sales_avg_week$`Sales Amount`[sales_avg_week$Segment == "Confex"] <- sales_avg_week$`Sales Amount`[sales_avg_week$Segment == "Confex"]/num_confex()
     sales_avg_week$`Sales Amount`[sales_avg_week$Segment == "Corporate"] <- sales_avg_week$`Sales Amount`[sales_avg_week$Segment == "Corporate"]/num_corporate()
     return(sales_avg_week)
@@ -852,7 +852,7 @@ shinyServer(function(input, output,session) {
     df <- aggregate(sales()$Maximum.of.Amount..Net.of.Tax.
                     ,by = list(sales()$year,sales()$month,sales()$segment)
                     ,FUN = sum)
-    names(df) <- c("Year","Date","Segment","Sales Amount")
+    names(df) <- c("Year","Month","Segment","Sales Amount")
     df$`Sales Amount`[df$Segment == "Confex"] <- df$`Sales Amount`[df$Segment == "Confex"]/num_confex()
     df$`Sales Amount`[df$Segment == "Corporate"] <- df$`Sales Amount`[df$Segment == "Corporate"]/num_corporate()
     return(df)
@@ -975,58 +975,75 @@ shinyServer(function(input, output,session) {
       data.month$month <- as.character(sort(data.month$month))
       leads_avg_month <- subset(leads_avg_month(),trimws(Segment,"both") ==trimws(input$segment,"both"))
       leads_avg_month <- subset(leads_avg_month,leads_avg_month$Year == input$year)
-      P <- dPlot(x = "month", y = "leads", data = data.month, type = 'bar',groups="Total Leads")
-      P$xAxis(orderRule = data.month$month)
+      leads_avg_month <- subset(leads_avg_month,leads_avg_month$Month %in% data.month$month)
       
-      if(input$avg_line){
-        P$layer(x="Month",y="Leads",data=leads_avg_month, type='line',groups = "Team Average")
+      h <- Highcharts$new()
+      h$xAxis(categories = data.month$month)
+      h$yAxis(list(title = list(text = 'No of Leads')))
+      h$series(name = 'Total Leads', type = 'column', color = '#4572A7',
+               data = data.month$leads)
+      h$plotOptions(column = list(dataLabels = list(enabled = TRUE)))
+      if (input$avg_line){
+        h$series(name = "Team Average", type = 'spline', color = "orange",
+                 data = leads_avg_month$Leads)
       }
       if(input$avg_self){
-        P$layer(x="month",y= "avg",data = data.month,type='line',groups = "Individual Average")
+        h$series(name = "Individual Average", type = 'spline', color = "red",
+                 data = data.month$avg)      
       }
-      P$legend(x = 60, y = 10, width = 620, height = 20,
-               horizontalAlign = "right")
-      P$yAxis('No of Leads',overrideMin = 0, overrideMax = max(max(leads_avg_month$Leads),max(data.month$avg),max(data.month$leads)))
-      return(P)
+      return(h)
+      
+      
     }
     else if(input$plotty == "week"){
       data.week <- aggregate(data$freq, by = list(data$year,data$week),FUN = sum)
       names(data.week) <- c("year","week","leads")
       data.week <- subset(data.week,trimws(data.week$year,"both") == trimws(input$year,"both"))
       data.week$avg <- mean(data.week$leads)
-      data.week$week <- as.character(sort(data.week$week))
+      #data.week$week <- as.character(sort(data.week$week))
       leads_avg_week <- subset(leads_avg_week(),trimws(Segment,"both") %in% trimws(input$segment,"both"))
       leads_avg_week <- subset(leads_avg_week,leads_avg_week$Year == input$year)
-      P <- dPlot(x = "week", y = "leads", data = data.week, type = 'bar',groups="Total Leads")
-      P$xAxis(orderRule = data.week$week)
-      if(input$avg_line){
-        P$layer(x="Week",y="Leads",data=leads_avg_week, type='line',groups = "Team Average")  
+      leads_avg_week <- subset(leads_avg_week,leads_avg_week$Week %in% data.week$week)
+      h <- Highcharts$new()
+      h$xAxis(categories = unique(data.week$week))
+      h$yAxis(list(title = list(text = 'No of Leads')))
+      h$series(name = 'Total Leads', type = 'column', color = '#4572A7',
+               data = data.week$leads)
+      h$plotOptions(column = list(dataLabels = list(enabled = TRUE)))
+      if (input$avg_line){
+        h$series(name = "Team Average", type = 'spline', color = "orange",
+                 data = leads_avg_week$Leads)
       }
       if(input$avg_self){
-        P$layer(x="week",y= "avg",data = data.week,type='line',groups = "Individual Average")
+        h$series(name = "Individual Average", type = 'spline', color = "red",
+                 data = data.week$avg)      
       }
-      P$legend(x = 60, y = 10, width = 620, height = 20,
-               horizontalAlign = "right")
-      P$yAxis('No of Leads',overrideMin = 0, overrideMax = max(max(leads_avg_week$Leads),max(data.week$avg),max(data.week$leads)))
-      return(P)
+      return(h)
     }
     else if(input$plotty =="day"){
       leads_sub <- subset(data,as.Date(Date.Created) >= input$dateRange[1]&as.Date(Date.Created) <= input$dateRange[2])
       leads_sub$avg <- mean(leads_sub$freq)##argument is not numeric or logical
       leads_avg_day <- subset(leads_avg_day(),trimws(Segment,"both") == trimws(input$segment,"both") )
-      leads_avg_day <- subset(leads_avg_day,as.Date(Date) >= input$dateRange[1]&as.Date(Date) <= input$dateRange[2])
-      P <- dPlot(x = "Date.Created",y = "freq",data= leads_sub,type = "line",groups = "Total Leads")
-      if(input$avg_line){
-        P$layer(x="Date",y="Leads", data = leads_avg_day, type = 'line',groups = "Team Average")  
+      #leads_avg_day <- subset(leads_avg_day,as.Date(Date) >= input$dateRange[1]&as.Date(Date) <= input$dateRange[2])
+      leads_avg_day <- subset(leads_avg_day,leads_avg_day$Date %in% leads_sub$Date.Created)
+      h <- Highcharts$new()
+      h$xAxis(categories = unique(leads_sub$Date.Created))
+      h$yAxis(list(title = list(text = 'No of Leads')))
+      h$series(name = 'Total Leads', type = 'column', color = '#4572A7',
+               data = leads_sub$freq)
+      h$plotOptions(column = list(dataLabels = list(enabled = TRUE)))
+      if (input$avg_line){
+        h$series(name = "Team Average", type = 'spline', color = "orange",
+                 data = leads_avg_day$Leads)
       }
       if(input$avg_self){
-        P$layer(x ="Date.Created",y = "avg",data=leads_sub,type ="line",groups = "Individual Average")
+        h$series(name = "Individual Average", type = 'spline', color = "red",
+                 data = leads_sub$avg)      
       }
-      P$legend(x = 60, y = 10, width = 620, height = 20,
-               horizontalAlign = "right")
+      return(h)
+      
     }
-    P$yAxis('No of Leads',overrideMin = 0, overrideMax = max(max(leads_avg_day$Leads),max(leads_sub$avg),max(leads_sub$freq)))
-    return(P)
+    
   })
   output$SalesPlot <- renderChart2({
     data <- subset(sales(),trimws(Sales.Rep.2,"both") %in% trimws(input$sales_rep,"both"))
@@ -1039,6 +1056,7 @@ shinyServer(function(input, output,session) {
       sales_avg_month <- subset(sales_avg_month(),trimws(Segment,"both") %in% trimws(input$segment_sale,"both"))
       sales_avg_month <- subset(sales_avg_month,trimws(sales_avg_month$Year,"both") %in% trimws(input$year_sale,"both"))
       sales.month$avg_amount <- mean(sales.month$Amount)
+      sales_avg_month <- subset(sales_avg_month,sales_avg_month$Month %in% sales.month$month)
       h <- Highcharts$new()
       h$xAxis(categories = sales.month$Month)
       h$yAxis(list(list(title = list(text = 'Sales Amount'))
@@ -1072,6 +1090,7 @@ shinyServer(function(input, output,session) {
       sales_avg_week <- subset(sales_avg_week(),trimws(Segment,"both") %in% trimws(input$segment_sale,"both"))
       sales_avg_week <- subset(sales_avg_week,trimws(sales_avg_week$Year,"both") %in% trimws(input$year_sale,"both"))
       sales.week$avg_amount <- mean(sales.week$Amount)
+      sales_avg_week <- subset(sales_avg_week,sales_avg_week$Week %in% sales.week$Week)
       h <- Highcharts$new()
       h$xAxis(categories = sales.week$Week)
       h$yAxis(list(list(title = list(text = 'Sales Amount'))
@@ -1102,9 +1121,8 @@ shinyServer(function(input, output,session) {
       sales.day.no <- aggregate(sales$SO.Number,by = list(sales$Date.Created),FUN = length)
       sales.day$No <- sales.day.no[,2]
       sales_avg_day <- subset(sales_avg_day(),trimws(Segment,"both") %in% trimws(input$segment_sale,"both"))
-      sales_avg_day <- subset(sales_avg_day,
-                              as.Date(Date) >= input$dateRange_sale[1]&as.Date(Date) <= input$dateRange_sale[2])
       sales.day$avg_amount <- mean(sales.day$Amount)
+      sales_avg_day <- subset(sales_avg_day,sales_avg_day$Date %in% sales.day$Date)
       h <- Highcharts$new()
       h$xAxis(categories = sales.day$Date)
       h$yAxis(list(list(title = list(text = 'Sales Amount'))

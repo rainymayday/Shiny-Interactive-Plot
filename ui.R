@@ -60,7 +60,7 @@ shinyUI(navbarPage("Sales Activity Report",
                             ),
                             mainPanel(
                               tabsetPanel(type="tab",
-                                          tabPanel("LeadsPlot",showOutput("LeadsPlot","dimple")),
+                                          tabPanel("LeadsPlot",showOutput("LeadsPlot","Highcharts")),
                                           tabPanel("LeadsTable",dataTableOutput("LeadsTable"))
                                           ))),
                    tabPanel("Contract",
