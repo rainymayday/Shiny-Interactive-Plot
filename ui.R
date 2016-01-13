@@ -77,12 +77,19 @@ shinyUI(navbarPage("Sales Activity Report",
                                                        , selected="day")
                                 )
                               ),
-                              downloadButton('downloadContract'
-                                             ,'Download Contract Table')
+                              fluidRow(
+                                column(12,h5(strong('Plot Options')),
+                                       checkboxInput("avg_line_con","Team Average"),
+                                       checkboxInput("avg_self_con","Individual Average"),
+                                       downloadButton('downloadContract','Download Contract Table')
+                                       )
+                                
+                              )
+                              
                             )),
                             mainPanel(
                               tabsetPanel(type = "tab",
-                                          tabPanel("Contract Plots",plotOutput("ContractPlots")),
+                                          tabPanel("Contract Plots",showOutput("ContractPlots","Highcharts")),
                                           tabPanel("Contract Tables",tableOutput("ContractTable")))  
                               
                             )),
@@ -99,11 +106,18 @@ shinyUI(navbarPage("Sales Activity Report",
                                                        , selected="day")
                                 )
                               ),
-                              downloadButton('downloadProposal'
-                                             ,'Download Proposal Table'))
+                              fluidRow(
+                                column(12,h5(strong('Plot Options')),
+                                       checkboxInput("avg_line_pro","Team Average"),
+                                       checkboxInput("avg_self_pro","Individual Average"),
+                                       downloadButton('downloadProposal','Download Proposal Table')
+                                )
+                                
+                              )
+                              )
                             ),
                             mainPanel(tabsetPanel(type="tab",
-                                                  tabPanel("Proposal Plots",plotOutput("ProposalPlots")),
+                                                  tabPanel("Proposal Plots",showOutput("ProposalPlots","Highcharts")),
                                                   tabPanel("Proposal Tables",
                                                            dataTableOutput("ProposalTable"))))),
                    

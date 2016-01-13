@@ -88,7 +88,7 @@ shinyServer(function(input, output,session) {
     isolate({
       contract <- read.csv(infile$datapath)
       contract <- subset(contract,contract$Created.By %in% as.character(salesrep()$sale_rep))
-      col <- c("Date.Created","Created.By","Name","Amount..Net.of.Tax.")
+      col <- c("Internal.ID","Date.Created","Created.By","Name","Amount..Net.of.Tax.")
       contract <- contract[,col]
       contract$Amount..Net.of.Tax. <- factor2numeric(contract$Amount..Net.of.Tax.)
       contract$Date.Created <- as.character(as.Date(contract$Date.Created, "%d/%m/%Y"))
@@ -107,7 +107,7 @@ shinyServer(function(input, output,session) {
     isolate({
       proposal <- read.csv(infile$datapath)
       proposal <- proposal[!duplicated(proposal),]
-      cols <- c("Date.Created","Name","Created.By"
+      cols <- c("Internal.ID","Date.Created","Name","Created.By"
                 ,"Amount..Net.of.Tax.")
       proposal <- proposal[,cols]
       proposal$Amount..Net.of.Tax. <- factor2numeric(proposal$Amount..Net.of.Tax.)
@@ -620,7 +620,7 @@ shinyServer(function(input, output,session) {
   output$segLevel <- renderUI({
     selectInput("segLevel","segment",choices = as.character(sales()$segment))})
   output$RepLevel<- renderUI({
-    if(input$level == "sales rep"){
+    if(input$level == "Sales Rep"){
       selectInput("RepLevel","Sales Rep",choices = unique(as.character(sales()$Sales.Rep.2) ))
     }
     
@@ -684,7 +684,7 @@ shinyServer(function(input, output,session) {
                                     mean(team_avg_cont()$amount)/num_corporate(),
                                     mean(personal_avg_cont()$amount)),
                          check.names = FALSE)
-    }else if(input$level == "Sales rep"& input$segLevel == "Confex"){
+    }else if(input$level == "Sales Rep"& input$segLevel == "Confex"){
       mydf <- data.frame(Contract = c('Total Contracts','Team Average','Individual Average'),
                          No = c(nrow(contract1()),
                                 mean(team_avg_cont_no()$no)/num_confex(),
@@ -857,113 +857,273 @@ shinyServer(function(input, output,session) {
     df$`Sales Amount`[df$Segment == "Corporate"] <- df$`Sales Amount`[df$Segment == "Corporate"]/num_corporate()
     return(df)
   })
-  
-  output$ContractPlots <- renderPlot({
-    validate(
-      need(contract() != "","Please Upload contract table!")
-    )
-    validate(
-      need(input$Contract_creator != "","Please select sales rep you want to see")
-    )
-    
-    data=subset(contract(),trimws(Created.By,"both") %in% trimws(input$Contract_creator,"both"))
-    contract_sub = subset(data,as.Date(as.character(Date.Created))>= input$dateRange_con[1]&as.Date(as.character(Date.Created)) <= input$dateRange_con[2])
-    
-    contract.week <- aggregate(data$Amount..Net.of.Tax.,
-                               by = list(data$year,data$week),
-                               FUN = sum)
-    names(contract.week) <- c("year","week","amount")
-    contract.week <- subset(contract.week,contract.week$year == input$year_con)
-    
-    contract.day <- aggregate(contract_sub$Amount..Net.of.Tax.,
-                              by = list(contract_sub$year,contract_sub$Date.Created),
-                              FUN=sum)
-    names(contract.day) <- c("year","day","amount")
-    contract.week <- subset(contract.week,contract.week$year == input$year_con)
-    
-    contract.month <- aggregate(data$Amount..Net.of.Tax.,
-                                by = list(data$year,data$month),
-                                FUN = sum)
-    names(contract.month) <- c("year","month","amount")
-    contract.month <- subset(contract.month,contract.month$year == input$year_con)
-    
-    switch(input$plotty_con,
-           "month" = {aesthetics1 = aes(x=contract.month[,2], y=contract.month[,3],group = "week")
-           pro_data = contract.month
-           xlabtxt = "Month"
-           plotty= geom_bar(size = 1.2,fill= "#00CCCC",stat="identity")
-           },
-           "week" = {aesthetics1 = aes(x=contract.week[,2], y=contract.week[,3],group = "week")
-           pro_data = contract.week
-           xlabtxt = "Week"
-           plotty= geom_bar(size = 1.2,fill= "#00CCCC",stat="identity")},
-           "day"  = {
-             aesthetics1 = aes(x=contract.day[,2], y=contract.day[,3],group = "day")
-             pro_data = contract.day
-             xlabtxt = "Day"
-             plotty = geom_line(aesthetics1,data = contract.day,size = 1.2,colour = "#00CCCC")
-           })
-    p <- ggplot(data = pro_data,mapping = aesthetics1)+
-      plotty+
-      geom_point(size = 1.5)+
-      ggtitle(paste("Contract Created by",input$Contract_creator))+
-      xlab(xlabtxt)+
-      ylab("Total Amount")+
-      theme_bw()+
-      theme(axis.text.x = element_text(angle = 45, hjust = 1))+
-      scale_y_continuous(labels = comma)
-    return(p)
+  contract_avg_day <- reactive({
+    contract_avg_day <- aggregate(contract()$Amount..Net.of.Tax.,
+                                  by =list(contract()$year,contract()$Date.Created,contract()$segment),
+                                  FUN = sum)
+    names(contract_avg_day) <- c("Year","Date","Segment","Contract Amount")
+    contract_avg_day$`Contract Amount`[contract_avg_day$Segment =="Confex"] <- contract_avg_day$`Contract Amount`[contract_avg_day$Segment =="Confex"]/num_confex()
+    contract_avg_day$`Contract Amount`[contract_avg_day$Segment =="Corporate"] <- contract_avg_day$`Contract Amount`[contract_avg_day$Segment =="Corporate"]/num_confex()
+    return(contract_avg_day)
   })
-  output$ProposalPlots <- renderPlot({
-    validate(
-      need(proposal() != "","Please Upload proposal table!")
-    )
-    validate(
-      need(input$Proposal_creator != "","Please select sales rep you want to see")
-    )
+  contract_avg_week <- reactive({
+    contract_avg_week <- aggregate(contract()$Amount..Net.of.Tax.,
+                                  by =list(contract()$year,contract()$week,contract()$segment),
+                                  FUN = sum)
+    names(contract_avg_week) <- c("Year","Week","Segment","Contract Amount")
+    contract_avg_week$`Contract Amount`[contract_avg_week$Segment =="Confex"] <- contract_avg_week$`Contract Amount`[contract_avg_week$Segment =="Confex"]/num_confex()
+    contract_avg_week$`Contract Amount`[contract_avg_week$Segment =="Corporate"] <- contract_avg_week$`Contract Amount`[contract_avg_week$Segment =="Corporate"]/num_confex()
+    return(contract_avg_week)
+  })
+  contract_avg_month <- reactive({
+    contract_avg_month <- aggregate(contract()$Amount..Net.of.Tax.,
+                                   by =list(contract()$year,contract()$month,contract()$segment),
+                                   FUN = sum)
+    names(contract_avg_month) <- c("Year","Month","Segment","Contract Amount")
+    contract_avg_month$`Contract Amount`[contract_avg_month$Segment =="Confex"] <- contract_avg_month$`Contract Amount`[contract_avg_month$Segment =="Confex"]/num_confex()
+    contract_avg_month$`Contract Amount`[contract_avg_month$Segment =="Corporate"] <- contract_avg_month$`Contract Amount`[contract_avg_month$Segment =="Corporate"]/num_confex()
+    return(contract_avg_month)
+  })
+  proposal_avg_day <- reactive({
+    proposal_avg_day <- aggregate(proposal()$Amount..Net.of.Tax.,
+                                  by =list(proposal()$year,proposal()$Date.Created,proposal()$segment),
+                                  FUN = sum)
+    names(proposal_avg_day) <- c("Year","Date","Segment","Proposal Amount")
+    proposal_avg_day$`Proposal Amount`[proposal_avg_day$Segment =="Confex"] <- proposal_avg_day$`Proposal Amount`[proposal_avg_day$Segment =="Confex"]/num_confex()
+    proposal_avg_day$`Proposal Amount`[proposal_avg_day$Segment =="Corporate"] <- proposal_avg_day$`Proposal Amount`[proposal_avg_day$Segment =="Corporate"]/num_confex()
+    return(proposal_avg_day)
+  })
+  proposal_avg_week <- reactive({
+    proposal_avg_week <- aggregate(proposal()$Amount..Net.of.Tax.,
+                                  by =list(proposal()$year,proposal()$week,proposal()$segment),
+                                  FUN = sum)
+    names(proposal_avg_week) <- c("Year","Week","Segment","Proposal Amount")
+    proposal_avg_week$`Proposal Amount`[proposal_avg_week$Segment =="Confex"] <- proposal_avg_week$`Proposal Amount`[proposal_avg_week$Segment =="Confex"]/num_confex()
+    proposal_avg_week$`Proposal Amount`[proposal_avg_week$Segment =="Corporate"] <- proposal_avg_week$`Proposal Amount`[proposal_avg_week$Segment =="Corporate"]/num_confex()
+    return(proposal_avg_week)
+  })
+  proposal_avg_month <- reactive({
+    proposal_avg_month <- aggregate(proposal()$Amount..Net.of.Tax.,
+                                   by =list(proposal()$year,proposal()$month,proposal()$segment),
+                                   FUN = sum)
+    names(proposal_avg_month) <- c("Year","Month","Segment","Proposal Amount")
+    proposal_avg_month$`Proposal Amount`[proposal_avg_month$Segment =="Confex"] <- proposal_avg_month$`Proposal Amount`[proposal_avg_month$Segment =="Confex"]/num_confex()
+    proposal_avg_month$`Proposal Amount`[proposal_avg_month$Segment =="Corporate"] <- proposal_avg_month$`Proposal Amount`[proposal_avg_month$Segment =="Corporate"]/num_confex()
+    return(proposal_avg_month)
+  })
+  
+  output$ContractPlots <- renderChart2({
+    data=subset(contract(),trimws(Created.By,"both") %in% trimws(input$Contract_creator,"both"))
+    if(input$plotty_con =="month"){
+      contract.month <- aggregate(data$Amount..Net.of.Tax.,
+                                  by = list(data$year,data$month),
+                                  FUN = sum)
+      names(contract.month) <- c("year","month","amount")
+      contract.month.no <-aggregate(data$Internal.ID,by =list(data$year,data$month),FUN = length)
+      contract.month$No <- contract.month.no[,3]
+      contract.month <- subset(contract.month,contract.month$year == input$year_con)
+      contract_avg_month <- subset(contract_avg_month(),trimws(Segment,"both") %in% trimws(input$segment_con,"both"))
+      contract_avg_month <- subset(contract_avg_month,trimws(contract_avg_month$Year,"both") %in% trimws(input$year_con,"both"))
+      contract_avg_month <- subset(contract_avg_month,contract_avg_month$Month %in% contract.month$month)
+      contract.month$avg_amount <- mean(contract.month$amount)
+      h <- Highcharts$new()
+      h$xAxis(categories = contract.month$month)
+      h$yAxis(list(list(title = list(text = 'Contract Amount'))
+                   , list(title = list(text = 'Contract No'), opposite = TRUE)
+      )
+      )
+      h$series(name = 'Total Amount', type = 'column', color = '#4572A7',
+               data = contract.month$amount)
+      h$series(name = 'Total No', type = 'scatter', color = '#89A54E',
+               data = contract.month$No,
+               yAxis = 1)
+      h$plotOptions(scatter = list(dataLabels = list(enabled = TRUE)))
+      if (input$avg_line_con){
+        h$series(name = "Team Average", type = 'spline', color = "orange",
+                 data = contract_avg_month$`Contract Amount`)
+        
+      }
+      if(input$avg_self_con){
+        h$series(name = "Individual Average", type = 'spline', color = "red",
+                 data = contract.month$avg_amount)      
+      }
+      return(h)
+      
+    }
+    else if(input$plotty_con =="week"){
+      contract.week <- aggregate(data$Amount..Net.of.Tax.,
+                                 by = list(data$year,data$week),
+                                 FUN = sum)
+      names(contract.week) <- c("year","week","amount")
+      contract.week.no <-aggregate(data$Internal.ID,by =list(data$year,data$week),FUN = length)
+      contract.week$No <- contract.week.no[,3]
+      contract.week <- subset(contract.week,contract.week$year == input$year_con)
+      contract.week$avg_amount <- mean(contract.week$amount)
+      contract_avg_week <- subset(contract_avg_week(),trimws(Segment,"both") %in% trimws(input$segment_con,"both"))
+      contract_avg_week <- subset(contract_avg_week,trimws(contract_avg_week$Year,"both") %in% trimws(input$year_con,"both"))
+      contract_avg_week <- subset(contract_avg_week,contract_avg_week$Week %in% contract.week$week)
+      h <- Highcharts$new()
+      h$xAxis(categories = contract.week$week)
+      h$yAxis(list(list(title = list(text = 'Contract Amount'))
+                   , list(title = list(text = 'Contract No'), opposite = TRUE)
+      )
+      )
+      h$series(name = 'Total Amount', type = 'column', color = '#4572A7',
+               data = contract.week$amount)
+      h$series(name = 'Total No', type = 'scatter', color = '#89A54E',
+               data = contract.week$No,
+               yAxis = 1)
+      h$plotOptions(scatter = list(dataLabels = list(enabled = TRUE)))
+      if (input$avg_line_con){
+        h$series(name = "Team Average", type = 'spline', color = "orange",
+                 data = contract_avg_week$`Contract Amount`)
+        
+      }
+      if(input$avg_self_con){
+        h$series(name = "Individual Average", type = 'spline', color = "red",
+                 data = contract.week$avg_amount)      
+      }
+      return(h)
+    }
+    else if(input$plotty_con == "day"){
+      contract_sub = subset(data,as.Date(as.character(Date.Created))>= input$dateRange_con[1]&as.Date(as.character(Date.Created)) <= input$dateRange_con[2])
+      contract.day <- aggregate(contract_sub$Amount..Net.of.Tax.,
+                                by = list(contract_sub$year,contract_sub$Date.Created),
+                                FUN=sum)
+      names(contract.day) <- c("year","day","amount")
+      contract.day.no <- aggregate(contract_sub$Internal.ID,by = list(contract_sub$Date.Created),FUN = length)
+      contract.day$No <- contract.day.no[,2]
+      contract_avg_day <- subset(contract_avg_day(),trimws(Segment,"both") %in% trimws(input$segment_con,"both"))
+      contract.day$avg_amount <- mean(contract.day$amount)
+      contract_avg_day <- subset(contract_avg_day,contract_avg_day$Date %in% contract.day$day)
+      h <- Highcharts$new()
+      h$xAxis(categories = contract.day$day)
+      h$yAxis(list(list(title = list(text = 'Contract Amount'))
+                   , list(title = list(text = 'Contract No'), opposite = TRUE)
+      )
+      )
+      h$series(name = 'Total Amount', type = 'spline', color = '#4572A7',
+               data = contract.day$amount)
+      h$series(name = 'Total No', type = 'scatter', color = '#89A54E',data = contract.day$No,yAxis = 1)
+      if (input$avg_line_con){
+        h$series(name = "Team Average", type = 'spline', color = "orange",
+                 data = contract_avg_day$`Contract Amount`)
+        
+      }
+      if(input$avg_self_con){
+        h$series(name = "Individual Average", type = 'spline', color = "red",
+                 data = contract.day$avg_amount)      
+      }
+      h$plotOptions(scatter = list(dataLabels = list(enabled = TRUE)))
+      return(h)
+    }
+    
+  })
+  output$ProposalPlots <- renderChart2({
     data=subset(proposal(),trimws(Created.By,"both") %in% trimws(input$Proposal_creator,"both"))
-    proposal_sub = subset(data
-                          ,as.Date(as.character(Date.Created))>= input$dateRange_pro[1]&as.Date(as.character(Date.Created)) <= input$dateRange_pro[2])
-    proposal.month <- aggregate(data$Amount..Net.of.Tax.,
-                                by = list(data$year,data$month),FUN = sum)
-    names(proposal.month) <- c("year","month","amount")
-    proposal.week <- aggregate(data$Amount..Net.of.Tax.,
-                               by = list(data$year,data$week),FUN = sum)
-    names(proposal.week) <- c("year","week","amount")
-    proposal.day <- aggregate(proposal_sub$Amount..Net.of.Tax.,
-                              by = list(proposal_sub$Date.Created),FUN=sum)
-    names(proposal.day) <- c("date","amount")
-    proposal.week <- subset(proposal.week,proposal.week$year %in% input$year_pro)
-    proposal.month <- subset(proposal.month,proposal.month$year %in% input$year_pro)
-    switch(input$plotty_pro,
-           "week" = {
-             aesthetics1 = aes(x=proposal.week[,2], y=proposal.week[,3],group = "week")
-             pro_data = proposal.week
-             xlabtxt = "Week"
-             plotty= geom_bar(size = 1.2,fill= "#00CCCC",stat="identity")},
-           
-           "day"  = {
-             aesthetics1 = aes(x=proposal.day[,1], y=proposal.day[,2],group = "day")
-             pro_data = proposal.day
-             xlabtxt = "Day"
-             plotty = geom_line(aesthetics1,data = proposal.day,size = 1.2,colour = "#00CCCC")},
-           
-           "month" = {
-             aesthetics1 = aes(x=proposal.month[,2],y=proposal.month[,3],group = "month")
-             pro_data = proposal.month
-             xlabtxt = "Month"
-             plotty= geom_bar(size = 1.2,fill= "#00CCCC",stat="identity")
-           }
-           )
-    p <- ggplot(data = pro_data,mapping = aesthetics1)+
-      plotty+geom_point(size = 1.5)+
-      ggtitle(paste("Proposal Created by",input$Proposal_creator))+
-      xlab(xlabtxt)+
-      ylab("Total Amount")+
-      theme_bw()+
-      theme(axis.text.x = element_text(angle = 45, hjust = 1))+
-      scale_y_continuous(labels = comma)
-    return(p)
+    if(input$plotty_pro == "month"){
+      proposal.month <- aggregate(data$Amount..Net.of.Tax.,
+                                  by = list(data$year,data$month),FUN = sum)
+      names(proposal.month) <- c("year","month","amount")
+      proposal.month.no <- aggregate(data$Internal.ID,by =list(data$year,data$month),FUN = length)
+      proposal.month$No <- proposal.month.no[,3]
+      proposal.month <- subset(proposal.month,proposal.month$year %in% input$year_pro)
+      proposal_avg_month <- subset(proposal_avg_month(),trimws(Segment,"both") %in% trimws(input$segment_pro,"both"))
+      proposal_avg_month <- subset(proposal_avg_month,trimws(proposal_avg_month$Year,"both") %in% trimws(input$year_pro,"both"))
+      proposal_avg_month <- subset(proposal_avg_month,proposal_avg_month$Month %in% proposal.month$month)
+      proposal.month$avg_amount <- mean(proposal.month$amount)
+      h <- Highcharts$new()
+      h$xAxis(categories = proposal.month$month)
+      h$yAxis(list(list(title = list(text = 'Proposal Amount'))
+                   , list(title = list(text = 'Proposal No'), opposite = TRUE)
+      )
+      )
+      h$series(name = 'Total Amount', type = 'column', color = '#4572A7',
+               data = proposal.month$amount)
+      h$series(name = 'Total No', type = 'scatter', color = '#89A54E',
+               data = proposal.month$No,
+               yAxis = 1)
+      h$plotOptions(scatter = list(dataLabels = list(enabled = TRUE)))
+      if (input$avg_line_pro){
+        h$series(name = "Team Average", type = 'spline', color = "orange",
+                 data = proposal_avg_month$`Proposal Amount`)
+        
+      }
+      if(input$avg_self_pro){
+        h$series(name = "Individual Average", type = 'spline', color = "red",
+                 data = proposal.month$avg_amount)      
+      }
+      return(h)
+      
+    }
+    else if(input$plotty_pro == "week"){
+      proposal.week <- aggregate(data$Amount..Net.of.Tax.,
+                                 by = list(data$year,data$week),
+                                 FUN = sum)
+      names(proposal.week) <- c("year","week","amount")
+      proposal.week.no <-aggregate(data$Internal.ID,by =list(data$year,data$week),FUN = length)
+      proposal.week$No <- proposal.week.no[,3]
+      proposal.week <- subset(proposal.week,proposal.week$year == input$year_pro)
+      proposal.week$avg_amount <- mean(proposal.week$amount)
+      proposal_avg_week <- subset(proposal_avg_week(),trimws(Segment,"both") %in% trimws(input$segment_pro,"both"))
+      proposal_avg_week <- subset(proposal_avg_week,trimws(proposal_avg_week$Year,"both") %in% trimws(input$year_pro,"both"))
+      proposal_avg_week <- subset(proposal_avg_week,proposal_avg_week$Week %in% proposal.week$week)
+      h <- Highcharts$new()
+      h$xAxis(categories = proposal.week$week)
+      h$yAxis(list(list(title = list(text = 'proposal Amount'))
+                   , list(title = list(text = 'proposal No'), opposite = TRUE)
+      )
+      )
+      h$series(name = 'Total Amount', type = 'column', color = '#4572A7',
+               data = proposal.week$amount)
+      h$series(name = 'Total No', type = 'scatter', color = '#89A54E',
+               data = proposal.week$No,
+               yAxis = 1)
+      h$plotOptions(scatter = list(dataLabels = list(enabled = TRUE)))
+      if (input$avg_line_pro){
+        h$series(name = "Team Average", type = 'spline', color = "orange",
+                 data = proposal_avg_week$`Proposal Amount`)
+        
+      }
+      if(input$avg_self_pro){
+        h$series(name = "Individual Average", type = 'spline', color = "red",
+                 data = proposal.week$avg_amount)      
+      }
+      return(h)
+    }
+    else if(input$plotty_pro == "day")
+    {
+      proposal_sub = subset(data,as.Date(as.character(Date.Created))>= input$dateRange_pro[1]&as.Date(as.character(Date.Created)) <= input$dateRange_pro[2])
+      proposal.day <- aggregate(proposal_sub$Amount..Net.of.Tax.,
+                                by = list(proposal_sub$year,proposal_sub$Date.Created),
+                                FUN=sum)
+      names(proposal.day) <- c("year","day","amount")
+      proposal.day.no <- aggregate(proposal_sub$Internal.ID,by = list(proposal_sub$Date.Created),FUN = length)
+      proposal.day$No <- proposal.day.no[,2]
+      proposal_avg_day <- subset(proposal_avg_day(),trimws(Segment,"both") %in% trimws(input$segment_pro,"both"))
+      proposal.day$avg_amount <- mean(proposal.day$amount)
+      proposal_avg_day <- subset(proposal_avg_day,proposal_avg_day$Date %in% proposal.day$day)
+      h <- Highcharts$new()
+      h$xAxis(categories = proposal.day$day)
+      h$yAxis(list(list(title = list(text = 'Proposal Amount'))
+                   , list(title = list(text = 'Proposal No'), opposite = TRUE)
+      )
+      )
+      h$series(name = 'Total Amount', type = 'spline', color = '#4572A7',
+               data = proposal.day$amount)
+      h$series(name = 'Total No', type = 'scatter', color = '#89A54E',data = proposal.day$No,yAxis = 1)
+      if (input$avg_line_pro){
+        h$series(name = "Team Average", type = 'spline', color = "orange",
+                 data = proposal_avg_day$`Proposal Amount`)
+        
+      }
+      if(input$avg_self_pro){
+        h$series(name = "Individual Average", type = 'spline', color = "red",
+                 data = proposal.day$avg_amount)      
+      }
+      h$plotOptions(scatter = list(dataLabels = list(enabled = TRUE)))
+      return(h)
+    }    
   })
   output$LeadsPlot <- renderChart2({
     data <-subset(leads(),trimws(Lead.Generator,"both") %in% trimws(input$LeadsGen,"both"))
@@ -976,7 +1136,6 @@ shinyServer(function(input, output,session) {
       leads_avg_month <- subset(leads_avg_month(),trimws(Segment,"both") ==trimws(input$segment,"both"))
       leads_avg_month <- subset(leads_avg_month,leads_avg_month$Year == input$year)
       leads_avg_month <- subset(leads_avg_month,leads_avg_month$Month %in% data.month$month)
-      
       h <- Highcharts$new()
       h$xAxis(categories = data.month$month)
       h$yAxis(list(title = list(text = 'No of Leads')))
@@ -992,15 +1151,12 @@ shinyServer(function(input, output,session) {
                  data = data.month$avg)      
       }
       return(h)
-      
-      
     }
     else if(input$plotty == "week"){
       data.week <- aggregate(data$freq, by = list(data$year,data$week),FUN = sum)
       names(data.week) <- c("year","week","leads")
       data.week <- subset(data.week,trimws(data.week$year,"both") == trimws(input$year,"both"))
       data.week$avg <- mean(data.week$leads)
-      #data.week$week <- as.character(sort(data.week$week))
       leads_avg_week <- subset(leads_avg_week(),trimws(Segment,"both") %in% trimws(input$segment,"both"))
       leads_avg_week <- subset(leads_avg_week,leads_avg_week$Year == input$year)
       leads_avg_week <- subset(leads_avg_week,leads_avg_week$Week %in% data.week$week)
@@ -1024,7 +1180,6 @@ shinyServer(function(input, output,session) {
       leads_sub <- subset(data,as.Date(Date.Created) >= input$dateRange[1]&as.Date(Date.Created) <= input$dateRange[2])
       leads_sub$avg <- mean(leads_sub$freq)##argument is not numeric or logical
       leads_avg_day <- subset(leads_avg_day(),trimws(Segment,"both") == trimws(input$segment,"both") )
-      #leads_avg_day <- subset(leads_avg_day,as.Date(Date) >= input$dateRange[1]&as.Date(Date) <= input$dateRange[2])
       leads_avg_day <- subset(leads_avg_day,leads_avg_day$Date %in% leads_sub$Date.Created)
       h <- Highcharts$new()
       h$xAxis(categories = unique(leads_sub$Date.Created))
@@ -1041,9 +1196,7 @@ shinyServer(function(input, output,session) {
                  data = leads_sub$avg)      
       }
       return(h)
-      
     }
-    
   })
   output$SalesPlot <- renderChart2({
     data <- subset(sales(),trimws(Sales.Rep.2,"both") %in% trimws(input$sales_rep,"both"))
@@ -1056,7 +1209,7 @@ shinyServer(function(input, output,session) {
       sales_avg_month <- subset(sales_avg_month(),trimws(Segment,"both") %in% trimws(input$segment_sale,"both"))
       sales_avg_month <- subset(sales_avg_month,trimws(sales_avg_month$Year,"both") %in% trimws(input$year_sale,"both"))
       sales.month$avg_amount <- mean(sales.month$Amount)
-      sales_avg_month <- subset(sales_avg_month,sales_avg_month$Month %in% sales.month$month)
+      sales_avg_month <- subset(sales_avg_month,sales_avg_month$Month %in% sales.month$Month)
       h <- Highcharts$new()
       h$xAxis(categories = sales.month$Month)
       h$yAxis(list(list(title = list(text = 'Sales Amount'))
