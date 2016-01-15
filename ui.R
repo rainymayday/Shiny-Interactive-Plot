@@ -99,6 +99,7 @@ shinyUI(navbarPage("Sales Activity Report",
                             column(3,wellPanel(
                               uiOutput("segment_con"),
                               uiOutput("Contract_creator"),
+                              uiOutput("Contract_creator1"),
                               uiOutput('dateRange_con'),
                               uiOutput("year_con"),
                               br(),
@@ -114,6 +115,7 @@ shinyUI(navbarPage("Sales Activity Report",
                                        checkboxInput("avg_line_con","Team Average"),
                                        checkboxInput("avg_self_con","Individual Average"),
                                        checkboxInput("contract_no","Show No of Contracts"),
+                                       checkboxInput("com_con","Compare with other contractor creators"),
                                        downloadButton('downloadContract','Download Contract Table')
                                        )
                                 
