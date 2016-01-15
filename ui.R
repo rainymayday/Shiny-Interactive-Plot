@@ -41,6 +41,7 @@ shinyUI(navbarPage("Sales Activity Report",
                             column(3, wellPanel(
                               uiOutput('segment'),
                               uiOutput('LeadsGen'),
+                              uiOutput("LeadsGen1"),
                               uiOutput('dateRange'),
                               uiOutput("year"),
                               br(),
@@ -55,14 +56,45 @@ shinyUI(navbarPage("Sales Activity Report",
                                 column(12,h5(strong('Plot Options')),
                                        checkboxInput('avg_line','Team Average'),
                                        checkboxInput("avg_self","Individual Average"),
+                                       checkboxInput("compare_rep","Compare with Other sales Rep"),
                                        downloadButton('downloadLeads','Download Leads Table'))
                               ))
                             ),
                             mainPanel(
                               tabsetPanel(type="tab",
-                                          tabPanel("LeadsPlot",showOutput("LeadsPlot","Highcharts")),
+                                          tabPanel("LeadsPlot",showOutput("LeadsPlot","highcharts")),
                                           tabPanel("LeadsTable",dataTableOutput("LeadsTable"))
                                           ))),
+                   tabPanel("Proposal",
+                            column(3,wellPanel(
+                              uiOutput("segment_pro"),
+                              uiOutput("Proposal_creator"),
+                              uiOutput("Proposal_creator1"),
+                              uiOutput('dateRange_pro'),
+                              uiOutput("year_pro"),
+                              br(),
+                              fluidRow(
+                                column(7, radioButtons("plotty_pro", "Plot Type",
+                                                       c("By day"="day","By week"="week","By month" ="month")
+                                                       , selected="day")
+                                )
+                              ),
+                              fluidRow(
+                                column(12,h5(strong('Plot Options')),
+                                       checkboxInput("avg_line_pro","Team Average"),
+                                       checkboxInput("avg_self_pro","Individual Average"),
+                                       checkboxInput("proposal_no","Show No of Proposal"),
+                                       checkboxInput("comp_pro","Comapre with other Proposal Creator"),
+                                       downloadButton('downloadProposal','Download Proposal Table')
+                                )
+                                
+                              )
+                            )
+                            ),
+                            mainPanel(tabsetPanel(type="tab",
+                                                  tabPanel("Proposal Plots",showOutput("ProposalPlots","highcharts")),
+                                                  tabPanel("Proposal Tables",
+                                                           dataTableOutput("ProposalTable"))))),
                    tabPanel("Contract",
                             column(3,wellPanel(
                               uiOutput("segment_con"),
@@ -81,6 +113,7 @@ shinyUI(navbarPage("Sales Activity Report",
                                 column(12,h5(strong('Plot Options')),
                                        checkboxInput("avg_line_con","Team Average"),
                                        checkboxInput("avg_self_con","Individual Average"),
+                                       checkboxInput("contract_no","Show No of Contracts"),
                                        downloadButton('downloadContract','Download Contract Table')
                                        )
                                 
@@ -89,37 +122,11 @@ shinyUI(navbarPage("Sales Activity Report",
                             )),
                             mainPanel(
                               tabsetPanel(type = "tab",
-                                          tabPanel("Contract Plots",showOutput("ContractPlots","Highcharts")),
+                                          tabPanel("Contract Plots",showOutput("ContractPlots","highcharts")),
                                           tabPanel("Contract Tables",tableOutput("ContractTable")))  
                               
                             )),
-                   tabPanel("Proposal",
-                            column(3,wellPanel(
-                              uiOutput("segment_pro"),
-                              uiOutput("Proposal_creator"),
-                              uiOutput('dateRange_pro'),
-                              uiOutput("year_pro"),
-                              br(),
-                              fluidRow(
-                                column(7, radioButtons("plotty_pro", "Plot Type",
-                                                       c("By day"="day","By week"="week","By month" ="month")
-                                                       , selected="day")
-                                )
-                              ),
-                              fluidRow(
-                                column(12,h5(strong('Plot Options')),
-                                       checkboxInput("avg_line_pro","Team Average"),
-                                       checkboxInput("avg_self_pro","Individual Average"),
-                                       downloadButton('downloadProposal','Download Proposal Table')
-                                )
-                                
-                              )
-                              )
-                            ),
-                            mainPanel(tabsetPanel(type="tab",
-                                                  tabPanel("Proposal Plots",showOutput("ProposalPlots","Highcharts")),
-                                                  tabPanel("Proposal Tables",
-                                                           dataTableOutput("ProposalTable"))))),
+                   
                    
                    tabPanel("Sales Order",
                             column(3, wellPanel(
@@ -142,13 +149,14 @@ shinyUI(navbarPage("Sales Activity Report",
                                                      ,'Team Average'),
                                        checkboxInput('avg_self_sale'
                                                      ,'Individual Average'),
+                                       checkboxInput("SO_no","Show No of Sales Order"),
                                        downloadButton('downloadSales'
                                                       ,'Download Sales Table'))
                               ))
                             ),
                             mainPanel(
                               tabsetPanel(type="tab",
-                                          tabPanel("SalesPlot",showOutput("SalesPlot","Highcharts")),
+                                          tabPanel("SalesPlot",showOutput("SalesPlot","highcharts")),
                                           tabPanel("SalesTable",dataTableOutput("SalesTable"))
                                           
                               ))

@@ -13,7 +13,6 @@ if(!require(rCharts)){
   library(rCharts)
 }
 require(rCharts)
-options(RCHART_LIB = 'polycharts')
 date_in_week <- function(year, week, weekday=7){
   w <- paste0(year, "-W", sprintf("%02d", week), "-", weekday)
   return(paste(ISOweek2date(w),ISOweek2date(w)+7,sep = " ~ "))
@@ -24,7 +23,6 @@ factor2numeric <- function(x){
 }
 
 shinyServer(function(input, output,session) {
-  # import data frame from uploaded csv
   salesrep <- reactive({
     infile <- input$file0
     if (is.null(infile)) {
@@ -54,7 +52,7 @@ shinyServer(function(input, output,session) {
         leads_date_generator <- count(leads,c("Date.Created","Lead.Generator","segment"))
         leads_date_generator$Lead.Generator <- as.factor(leads_date_generator$Lead.Generator)
         leads_date_generator$week <- week(leads_date_generator$Date.Created)
-        leads_date_generator$month <- month(leads_date_generator$Date.Created,label=TRUE)
+        leads_date_generator$month <- lubridate::month(leads_date_generator$Date.Created,label = TRUE)
         leads_date_generator$year <- year(leads_date_generator$Date.Created)
       }
     )
@@ -75,7 +73,7 @@ shinyServer(function(input, output,session) {
       sales <- merge(sales, salesrep(),by.x= "Sales.Rep.2",by.y = "sale_rep")
       sales$Date.Created <- as.character(as.Date(sales$Date.Created, "%d/%m/%Y"))
       sales$week <- week(sales$Date.Created)
-      sales$month <- month(sales$Date.Created,label = TRUE)
+      sales$month <- lubridate::month(sales$Date.Created,label = TRUE)
       sales$year <- year(sales$Date.Created)
     })
     return(sales)
@@ -94,7 +92,7 @@ shinyServer(function(input, output,session) {
       contract$Date.Created <- as.character(as.Date(contract$Date.Created, "%d/%m/%Y"))
       contract <- merge(contract, salesrep(),by.x= "Created.By",by.y = "sale_rep")
       contract$week <- week(contract$Date.Created)
-      contract$month <-month(contract$Date.Created,label = TRUE)
+      contract$month <-lubridate::month(contract$Date.Created,label = TRUE)
       contract$year <- year(contract$Date.Created)
     })
     return (contract)
@@ -115,7 +113,7 @@ shinyServer(function(input, output,session) {
       proposal$Date.Created <- as.character(as.Date(proposal$Date.Created, "%d/%m/%Y"))
       proposal <- merge(proposal, salesrep(),by.x= "Created.By",by.y = "sale_rep")
       proposal$week <- week(proposal$Date.Created)
-      proposal$month <- month(proposal$Date.Created,label = TRUE)
+      proposal$month <- lubridate::month(proposal$Date.Created,label = TRUE)
       proposal$year <- year(proposal$Date.Created)
     })
     return (proposal)
@@ -527,7 +525,7 @@ shinyServer(function(input, output,session) {
   
   # reactive UI
   output$segment <- renderUI({
-    selectInput("segment","Segment",choices = as.character(salesrep()$segment))
+    selectInput("segment","Segment",choices = as.character(salesrep()$segment),selected = 1)
   })
   output$LeadsGen <- renderUI({
     
@@ -536,17 +534,23 @@ shinyServer(function(input, output,session) {
   output$dateRange <- renderUI({
     if(input$plotty == "day"){
       dateRangeInput('dateRange','Choose date range'
-                     ,start = as.Date("2015-11-01"), end = as.Date("2015-12-01"))
+                     ,start = Sys.Date()-30, end = Sys.Date())
     }
   })
   output$year <- renderUI({
     if(input$plotty =="week"||input$plotty == "month"){
-      selectInput("year","Choose the year you want:",choices = leads()$year)
+      selectInput("year","Choose the year you want:",choices = leads()$year,selected = 1)
+    }
+  })
+  
+  output$LeadsGen1 <- renderUI({
+    if(input$compare_rep){
+      selectInput("LeadsGen1","Leads Generator to compare:",choices = as.character(salesrep()$sale_rep[salesrep()$segment==input$segment]))
     }
   })
   
   output$segment_sale <- renderUI({
-    selectInput('segment_sale','Segment',choices = as.character(salesrep()$segment))
+    selectInput('segment_sale','Segment',choices = as.character(salesrep()$segment),selected = 1)
   })
   output$sales_rep <- renderUI({
     selectInput('sales_rep','Sales Representative',choices = as.character(salesrep()$sale_rep))
@@ -554,18 +558,18 @@ shinyServer(function(input, output,session) {
   output$dateRange_sale <- renderUI({
     if(input$plotty_sale == "day"){
       dateRangeInput('dateRange_sale','Choose date range'
-                     ,start = as.Date("2015-11-01"), end = as.Date("2015-12-01"))
+                     ,start = Sys.Date()-30, end = Sys.Date())
     }
   })
   output$year_sale <- renderUI({
     if(input$plotty_sale == "week"||input$plotty_sale == "month"){
-      selectInput("year_sale","Choose the year you want:",choices = sales()$year)
+      selectInput("year_sale","Choose the year you want:",choices = sort(sales()$year),selected = 1)
     }
     
   })
   
   output$segment_con <- renderUI({
-    selectInput('segment_con', 'Segment',  choices = as.character(salesrep()$segment))
+    selectInput('segment_con', 'Segment',  choices = as.character(salesrep()$segment),selected = 1)
   })
   output$Contract_creator <- renderUI({
     selectInput('Contract_creator', 'Created by', as.character(salesrep()$sale_rep))
@@ -573,35 +577,42 @@ shinyServer(function(input, output,session) {
   output$dateRange_con <- renderUI({
     if(input$plotty_con == "day"){
       dateRangeInput("dateRange_con",'Choose date range'
-                     ,start = as.Date("2015-11-01"), end = as.Date("2015-12-01"))
+                     ,start = Sys.Date()-30, end = Sys.Date())
     }
   })
   output$year_con <- renderUI({
     if(input$plotty_con == "week"||input$plotty_con == "month"){
-      selectInput("year_con","Choose the year you want to see:",choices = contract()$year)
+      selectInput("year_con","Choose the year you want to see:",choices = contract()$year,selected = 1)
     }
   })
   
   output$segment_pro <- renderUI({
-    selectInput('segment_pro', 'Segment',  as.character(salesrep()$segment))
+    selectInput('segment_pro', 'Segment',  as.character(salesrep()$segment),selected = 1)
   })
   output$Proposal_creator <- renderUI({
     selectInput('Proposal_creator','Created by',as.character(salesrep()$sale_rep))
   })
+  
+  output$Proposal_creator1 <- renderUI({
+    if(input$comp_pro){
+      selectInput('Proposal_creator','Created by',as.character(salesrep()$sale_rep[salesrep()$segment%in%input$segment_pro]))
+    }
+    
+  })
   output$dateRange_pro <- renderUI({
     if(input$plotty_pro == "day"){
       dateRangeInput('dateRange_pro','Choose date range'
-                     ,start = as.Date("2015-11-01"), end = as.Date("2015-12-01"))
+                     ,start = Sys.Date()-30, end = Sys.Date())
     }
   })
   output$year_pro <- renderUI({
     if(input$plotty_pro =="week"||input$plotty_pro == "month"){
-      selectInput("year_pro","Choose the year you want:",choices = sort(proposal()$year))
+      selectInput("year_pro","Choose the year you want:",choices = sort(proposal()$year),selected = 1)
     }
   })
   
   output$year_summary <- renderUI({
-    selectInput("year_summary","Choose the year you want:",choices = sort(sales()$year))
+    selectInput("year_summary","Choose the year you want:",choices = sort(sales()$year),selected = 1)
   })
   output$selectList <- renderUI({
     validate(
@@ -609,19 +620,18 @@ shinyServer(function(input, output,session) {
     )
     if (input$reportty == "week"){
       selectInput("list",input$reportty,
-                  choices = sort(week(sales()$Date.Created)))
+                  choices = sort(week(sales()$Date.Created)),selected = 1)
     }
     else if(input$reportty == "month"){
       selectInput("list",input$reportty,
-                  choices = as.character(sort(month(sales()$Date.Created,
-                                                    label = TRUE))))
+                  choices = as.character(sort(lubridate::month(sales()$Date.Created,label = TRUE))),selected = 1)
     }
   })
   output$segLevel <- renderUI({
-    selectInput("segLevel","segment",choices = as.character(sales()$segment))})
+    selectInput("segLevel","segment",choices = as.character(salesrep()$segment),selected = 1)})
   output$RepLevel<- renderUI({
     if(input$level == "Sales Rep"){
-      selectInput("RepLevel","Sales Rep",choices = unique(as.character(sales()$Sales.Rep.2) ))
+      selectInput("RepLevel","Sales Rep",choices = unique(as.character(salesrep()$sales_rep)),selected = 1)
     }
     
   })
@@ -797,7 +807,7 @@ shinyServer(function(input, output,session) {
   observe({
     updateSelectInput(session,inputId ="RepLevel" ,
                       label ="Sales Rep" ,
-                      choices = unique(as.character(sales()$Sales.Rep.2[sales()$segment == input$segLevel])))
+                      choices = unique(as.character(salesrep()$sale_rep[salesrep()$segment == input$segLevel])))
     
   })
   
@@ -928,15 +938,13 @@ shinyServer(function(input, output,session) {
       contract.month$avg_amount <- mean(contract.month$amount)
       h <- Highcharts$new()
       h$xAxis(categories = contract.month$month,labels = list(rotation = 90, align = "left"))
-      h$yAxis(list(list(title = list(text = 'Contract Amount'))
-                   , list(title = list(text = 'Contract No'), opposite = TRUE)
+      h$yAxis(list(list(title = list(text = 'Total Value'))
+                   , list(title = list(text = 'Total No'), opposite = TRUE)
       )
       )
-      h$series(name = 'Total Amount', type = 'column', color = '#4572A7',
+      h$series(name = input$Contract_creator, type = 'column',color = '#4572A7',
                data = contract.month$amount)
-      h$series(name = 'Total No', type = 'scatter', color = '#89A54E',
-               data = contract.month$No,
-               yAxis = 1)
+      
       h$plotOptions(scatter = list(dataLabels = list(enabled = TRUE)))
       if (input$avg_line_con){
         h$series(name = "Team Average", type = 'spline', color = "orange",
@@ -947,6 +955,12 @@ shinyServer(function(input, output,session) {
         h$series(name = "Individual Average", type = 'spline', color = "red",
                  data = contract.month$avg_amount)      
       }
+      if(input$contract_no){
+        h$series(name = 'Total No', type = 'scatter', color = '#89A54E',
+                 data = contract.month$No,
+                 yAxis = 1)
+      }
+
       h$title(text = paste("Contract Generated by ",input$Contract_creator,"Show By Month"))
       return(h)
     }
@@ -964,15 +978,13 @@ shinyServer(function(input, output,session) {
       contract_avg_week <- subset(contract_avg_week,contract_avg_week$Week %in% contract.week$week)
       h <- Highcharts$new()
       h$xAxis(categories = contract.week$week,labels = list(rotation = 90, align = "left"))
-      h$yAxis(list(list(title = list(text = 'Contract Amount'))
-                   , list(title = list(text = 'Contract No'), opposite = TRUE)
+      h$yAxis(list(list(title = list(text = 'Total Value'))
+                   , list(title = list(text = 'Total No'), opposite = TRUE)
       )
       )
-      h$series(name = 'Total Amount', type = 'column', color = '#4572A7',
+      h$series(name = 'Total Value', type = 'column', color = '#4572A7',
                data = contract.week$amount)
-      h$series(name = 'Total No', type = 'scatter', color = '#89A54E',
-               data = contract.week$No,
-               yAxis = 1)
+      
       h$plotOptions(scatter = list(dataLabels = list(enabled = TRUE)))
       if (input$avg_line_con){
         h$series(name = "Team Average", type = 'spline', color = "orange",
@@ -982,6 +994,11 @@ shinyServer(function(input, output,session) {
       if(input$avg_self_con){
         h$series(name = "Individual Average", type = 'spline', color = "red",
                  data = contract.week$avg_amount)      
+      }
+      if(input$contract_no){
+        h$series(name = 'Total No', type = 'scatter', color = '#89A54E',
+                 data = contract.week$No,
+                 yAxis = 1)
       }
       h$title(text = paste("Contract Generated by ",input$Contract_creator,"Show By Week"))
       return(h)
@@ -999,13 +1016,13 @@ shinyServer(function(input, output,session) {
       contract_avg_day <- subset(contract_avg_day,contract_avg_day$Date %in% contract.day$day)
       h <- Highcharts$new()
       h$xAxis(categories = contract.day$day,labels = list(rotation = 90, align = "left"))
-      h$yAxis(list(list(title = list(text = 'Contract Amount'))
-                   , list(title = list(text = 'Contract No'), opposite = TRUE)
+      h$yAxis(list(list(title = list(text = 'Total Value'))
+                   , list(title = list(text = 'Total No'), opposite = TRUE)
       )
       )
-      h$series(name = 'Total Amount', type = 'spline', color = '#4572A7',
+      h$series(name = 'Total Value', type = 'spline', color = '#4572A7',
                data = contract.day$amount)
-      h$series(name = 'Total No', type = 'scatter', color = '#89A54E',data = contract.day$No,yAxis = 1)
+      
       if (input$avg_line_con){
         h$series(name = "Team Average", type = 'spline', color = "orange",
                  data = contract_avg_day$`Contract Amount`)
@@ -1015,9 +1032,11 @@ shinyServer(function(input, output,session) {
         h$series(name = "Individual Average", type = 'spline', color = "red",
                  data = contract.day$avg_amount)      
       }
+      if(input$contract_no){
+        h$series(name = 'Total No', type = 'scatter', color = '#89A54E',data = contract.day$No,yAxis = 1)
+        }
       h$plotOptions(scatter = list(dataLabels = list(enabled = TRUE)))
       h$title(text = paste("Contract Generated by ",input$Contract_creator,"Show By Day"))
-      #h$show("inline", include_assets = FALSE)
       return(h)
     }
     
@@ -1037,15 +1056,12 @@ shinyServer(function(input, output,session) {
       proposal.month$avg_amount <- mean(proposal.month$amount)
       h <- Highcharts$new()
       h$xAxis(categories = proposal.month$month,labels = list(rotation = 90, align = "left"))
-      h$yAxis(list(list(title = list(text = 'Proposal Amount'))
-                   , list(title = list(text = 'Proposal No'), opposite = TRUE)
+      h$yAxis(list(list(title = list(text = 'Total Value'))
+                   , list(title = list(text = 'Total No'), opposite = TRUE)
       )
       )
-      h$series(name = 'Total Amount', type = 'column', color = '#4572A7',
+      h$series(name = 'Total Value', type = 'column', color = '#4572A7',
                data = proposal.month$amount)
-      h$series(name = 'Total No', type = 'scatter', color = '#89A54E',
-               data = proposal.month$No,
-               yAxis = 1)
       h$plotOptions(scatter = list(dataLabels = list(enabled = TRUE)))
       if (input$avg_line_pro){
         h$series(name = "Team Average", type = 'spline', color = "orange",
@@ -1055,6 +1071,20 @@ shinyServer(function(input, output,session) {
       if(input$avg_self_pro){
         h$series(name = "Individual Average", type = 'spline', color = "red",
                  data = proposal.month$avg_amount)      
+      }
+      if(input$proposal_no){
+        h$series(name = 'Total No', type = 'scatter', color = '#89A54E',
+                 data = proposal.month$No,
+                 yAxis = 1)
+      }
+      if(input$comp_pro){
+          data=subset(proposal(),trimws(Created.By,"both") %in% trimws(input$Proposal_creator1,"both"))
+          proposal.month <- aggregate(data$Amount..Net.of.Tax.,
+                                      by = list(data$year,data$month),FUN = sum)
+          names(proposal.month) <- c("year","month","amount")
+          h$series(name = input$Contract_creator1, type = 'column',color="green",
+                   data = proposal.month$amount)
+    
       }
       h$title(text = paste("Proposal Generated by ",input$Proposal_creator,"Show By Month"))
       return(h)
@@ -1074,15 +1104,13 @@ shinyServer(function(input, output,session) {
       proposal_avg_week <- subset(proposal_avg_week,proposal_avg_week$Week %in% proposal.week$week)
       h <- Highcharts$new()
       h$xAxis(categories = proposal.week$week,labels = list(rotation = 90, align = "left"))
-      h$yAxis(list(list(title = list(text = 'proposal Amount'))
-                   , list(title = list(text = 'proposal No'), opposite = TRUE)
+      h$yAxis(list(list(title = list(text = 'Total Value'))
+                   , list(title = list(text = 'Total No'), opposite = TRUE)
       )
       )
-      h$series(name = 'Total Amount', type = 'column', color = '#4572A7',
+      h$series(name = 'Total Value', type = 'column', color = '#4572A7',
                data = proposal.week$amount)
-      h$series(name = 'Total No', type = 'scatter', color = '#89A54E',
-               data = proposal.week$No,
-               yAxis = 1)
+      
       h$plotOptions(scatter = list(dataLabels = list(enabled = TRUE)))
       if (input$avg_line_pro){
         h$series(name = "Team Average", type = 'spline', color = "orange",
@@ -1092,6 +1120,11 @@ shinyServer(function(input, output,session) {
       if(input$avg_self_pro){
         h$series(name = "Individual Average", type = 'spline', color = "red",
                  data = proposal.week$avg_amount)      
+      }
+      if(input$proposal_no){
+        h$series(name = 'Total No', type = 'scatter', color = '#89A54E',
+                 data = proposal.week$No,
+                 yAxis = 1)
       }
       h$title(text = paste("Proposal Generated by ",input$Proposal_creator,"Show By Week"))
       return(h)
@@ -1110,13 +1143,12 @@ shinyServer(function(input, output,session) {
       proposal_avg_day <- subset(proposal_avg_day,proposal_avg_day$Date %in% proposal.day$day)
       h <- Highcharts$new()
       h$xAxis(categories = proposal.day$day,labels = list(rotation = 90, align = "left"))
-      h$yAxis(list(list(title = list(text = 'Proposal Amount'))
-                   , list(title = list(text = 'Proposal No'), opposite = TRUE)
+      h$yAxis(list(list(title = list(text = 'Total Value'))
+                   , list(title = list(text = 'Total No'), opposite = TRUE)
       )
       )
-      h$series(name = 'Total Amount', type = 'spline', color = '#4572A7',
+      h$series(name = 'Total Value', type = 'spline', color = '#4572A7',
                data = proposal.day$amount)
-      h$series(name = 'Total No', type = 'scatter', color = '#89A54E',data = proposal.day$No,yAxis = 1)
       if (input$avg_line_pro){
         h$series(name = "Team Average", type = 'spline', color = "orange",
                  data = proposal_avg_day$`Proposal Amount`)
@@ -1125,6 +1157,9 @@ shinyServer(function(input, output,session) {
       if(input$avg_self_pro){
         h$series(name = "Individual Average", type = 'spline', color = "red",
                  data = proposal.day$avg_amount)      
+      }
+      if(input$proposal_no){
+        h$series(name = 'Total No', type = 'scatter', color = '#89A54E',data = proposal.day$No,yAxis = 1)
       }
       h$plotOptions(scatter = list(dataLabels = list(enabled = TRUE)))
       h$title(text = paste("Proposal Generated by ",input$Proposal_creator,"Show By Day"))
@@ -1144,8 +1179,8 @@ shinyServer(function(input, output,session) {
       leads_avg_month <- subset(leads_avg_month,leads_avg_month$Month %in% data.month$month)
       h <- Highcharts$new()
       h$xAxis(categories = data.month$month,labels = list(rotation = 90, align = "left"))
-      h$yAxis(list(title = list(text = 'No of Leads')))
-      h$series(name = 'Total Leads', type = 'column', color = '#4572A7',
+      h$yAxis(list(title = list(text = 'Total No')))
+      h$series(name = 'Total No', type = 'column', color = '#4572A7',
                data = data.month$leads)
       h$plotOptions(column = list(dataLabels = list(enabled = TRUE)))
       if (input$avg_line){
@@ -1156,6 +1191,15 @@ shinyServer(function(input, output,session) {
         h$series(name = "Individual Average", type = 'spline', color = "red",
                  data = data.month$avg)      
       }
+      if(input$compare_rep){
+        data <-subset(leads(),trimws(Lead.Generator,"both") %in% trimws(input$LeadsGen1,"both"))
+        data.month <- aggregate(data$freq, by = list(data$year,data$month),FUN = sum)
+        names(data.month) <- c("year","month","leads")
+        data.month <- subset(data.month,trimws(data.month$year,"both") == trimws(input$year,"both"))
+        h$series(name = input$LeadsGen1, type = 'column', color = 'green',
+                 data = data.month$leads)
+      }
+      
       h$title(text = paste("Leads Generated by ",input$LeadsGen,"Show By Month"))
       return(h)
     }
@@ -1169,8 +1213,8 @@ shinyServer(function(input, output,session) {
       leads_avg_week <- subset(leads_avg_week,leads_avg_week$Week %in% data.week$week)
       h <- Highcharts$new()
       h$xAxis(categories = unique(data.week$week),labels = list(rotation = 90, align = "left"))
-      h$yAxis(list(title = list(text = 'No of Leads')))
-      h$series(name = 'Total Leads', type = 'column', color = '#4572A7',
+      h$yAxis(list(title = list(text = 'Total No')))
+      h$series(name = 'Total No', type = 'column', color = '#4572A7',
                data = data.week$leads)
       h$plotOptions(column = list(dataLabels = list(enabled = TRUE)))
       if (input$avg_line){
@@ -1180,6 +1224,14 @@ shinyServer(function(input, output,session) {
       if(input$avg_self){
         h$series(name = "Individual Average", type = 'spline', color = "red",
                  data = data.week$avg)      
+      }
+      if(input$compare_rep){
+        data <-subset(leads(),trimws(Lead.Generator,"both") %in% trimws(input$LeadsGen1,"both"))
+        data.week <- aggregate(data$freq, by = list(data$year,data$week),FUN = sum)
+        names(data.week) <- c("year","week","leads")
+        data.week <- subset(data.week,trimws(data.week$year,"both") == trimws(input$year,"both"))
+        h$series(name = input$LeadsGen1, type = 'column', color = 'green',
+                 data = data.week$leads)
       }
       h$title(text = paste("Leads Generated by ",input$LeadsGen,"Show By Week"))
       return(h)
@@ -1191,10 +1243,9 @@ shinyServer(function(input, output,session) {
       leads_avg_day <- subset(leads_avg_day,leads_avg_day$Date %in% leads_sub$Date.Created)
       h <- Highcharts$new()
       h$xAxis(categories = unique(leads_sub$Date.Created),labels = list(rotation = 90, align = "left"))
-      h$yAxis(list(title = list(text = 'No of Leads')))
-      h$series(name = 'Total Leads', type = 'spline', color = '#4572A7',
+      h$yAxis(list(title = list(text = 'Total No')))
+      h$series(name = 'Total No', type = 'spline', color = '#4572A7',
                data = leads_sub$freq)
-      #h$plotOptions(column = list(dataLabels = list(enabled = TRUE)))
       if (input$avg_line){
         h$series(name = "Team Average", type = 'spline', color = "orange",
                  data = leads_avg_day$Leads)
@@ -1202,6 +1253,11 @@ shinyServer(function(input, output,session) {
       if(input$avg_self){
         h$series(name = "Individual Average", type = 'spline', color = "red",
                  data = leads_sub$avg)      
+      }
+      if(input$compare_rep){
+        data <-subset(leads(),trimws(Lead.Generator,"both") %in% trimws(input$LeadsGen1,"both"))
+        leads_sub <- subset(data,as.Date(Date.Created) >= input$dateRange[1]&as.Date(Date.Created) <= input$dateRange[2])
+        h$series(name = input$LeadsGen1, type = 'spline', color = 'green',data = leads_sub$freq)
       }
       h$title(text = paste("Leads Generated by ",input$LeadsGen,"Show By Day"))
       return(h)
@@ -1221,15 +1277,13 @@ shinyServer(function(input, output,session) {
       sales_avg_month <- subset(sales_avg_month,sales_avg_month$Month %in% sales.month$Month)
       h <- Highcharts$new()
       h$xAxis(categories = sales.month$Month,labels = list(rotation = 90, align = "left"))
-      h$yAxis(list(list(title = list(text = 'Sales Amount'))
-                   , list(title = list(text = 'Sales No'), opposite = TRUE)
+      h$yAxis(list(list(title = list(text = 'Total Value'))
+                   , list(title = list(text = 'Total No'), opposite = TRUE)
       )
       )
-      h$series(name = 'Sales Amount', type = 'column', color = '#4572A7',
+      h$series(name = 'Total Value', type = 'column', color = '#4572A7',
                data = sales.month$Amount)
-      h$series(name = 'Sales No', type = 'scatter', color = '#89A54E',
-               data = sales.month$No,
-               yAxis = 1)
+      
       h$plotOptions(scatter = list(dataLabels = list(enabled = TRUE)))
       if (input$avg_line_sale){
         h$series(name = "Team Average", type = 'spline', color = "orange",
@@ -1239,6 +1293,11 @@ shinyServer(function(input, output,session) {
       if(input$avg_self_sale){
         h$series(name = "Individual Average", type = 'spline', color = "red",
                  data = sales.month$avg_amount)      
+      }
+      if(input$SO_no){
+        h$series(name = 'Total No', type = 'scatter', color = '#89A54E',
+                 data = sales.month$No,
+                 yAxis = 1)
       }
       h$title(text = paste("Sales Order Generated by ",input$sales_rep,"Show By Month"))
       return(h)
@@ -1256,15 +1315,13 @@ shinyServer(function(input, output,session) {
       sales_avg_week <- subset(sales_avg_week,sales_avg_week$Week %in% sales.week$Week)
       h <- Highcharts$new()
       h$xAxis(categories = sales.week$Week,labels = list(rotation = 90, align = "left"))
-      h$yAxis(list(list(title = list(text = 'Sales Amount'))
-                   , list(title = list(text = 'Sales No'), opposite = TRUE)
+      h$yAxis(list(list(title = list(text = 'Total Value'))
+                   , list(title = list(text = 'Total No'), opposite = TRUE)
       )
       )
-      h$series(name = 'Sales Amount', type = 'column', color = '#4572A7',
+      h$series(name = 'Total Value', type = 'column', color = '#4572A7',
                data = sales.week$Amount)
-      h$series(name = 'Sales No', type = 'scatter', color = '#89A54E',
-               data = sales.week$No,
-               yAxis = 1)
+      
       if (input$avg_line_sale){
         h$series(name = "Team Average", type = 'spline', color = "orange",
                  data = sales_avg_week$`Sales Amount`)
@@ -1274,6 +1331,11 @@ shinyServer(function(input, output,session) {
         h$series(name = "Individual Average", type = 'spline', color = "red",
                  data = sales.week$avg_amount)      
       }
+      if(input$SO_no){
+        h$series(name = 'Total No', type = 'scatter', color = '#89A54E',
+                 data = sales.week$No,
+                 yAxis = 1)
+        }
       h$plotOptions(scatter = list(dataLabels = list(enabled = TRUE)))
       h$title(text = paste("Sales Order Generated by ",input$sales_rep,"Show By Week"))
       return(h)
@@ -1289,13 +1351,12 @@ shinyServer(function(input, output,session) {
       sales_avg_day <- subset(sales_avg_day,sales_avg_day$Date %in% sales.day$Date)
       h <- Highcharts$new()
       h$xAxis(categories = sales.day$Date,labels = list(rotation = 90, align = "left"))
-      h$yAxis(list(list(title = list(text = 'Sales Amount'))
-                   , list(title = list(text = 'Sales No'), opposite = TRUE)
+      h$yAxis(list(list(title = list(text = 'Total Value'))
+                   , list(title = list(text = 'Total No'), opposite = TRUE)
       )
       )
-      h$series(name = 'Sales Amount', type = 'spline', color = '#4572A7',
+      h$series(name = 'Total Value', type = 'spline', color = '#4572A7',
                data = sales.day$Amount,groups = "Total Sales Amount")
-      h$series(name = 'Sales No', type = 'scatter', color = '#89A54E',data = sales.day$No,yAxis = 1)
       if (input$avg_line_sale){
         h$series(name = "Team Average", type = 'spline', color = "orange",
                  data = sales_avg_day$`Sales Amount`)
@@ -1305,6 +1366,9 @@ shinyServer(function(input, output,session) {
         h$series(name = "Individual Average", type = 'spline', color = "red",
                  data = sales.day$avg_amount)      
       }
+      if(input$SO_no){
+        h$series(name = 'Total No', type = 'scatter', color = '#89A54E',data = sales.day$No,yAxis = 1)
+        }
       h$plotOptions(scatter = list(dataLabels = list(enabled = TRUE)))
       h$title(text = paste("Sales Order Generated by ",input$sales_rep,"Show By Day"))
       return(h)
