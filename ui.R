@@ -134,6 +134,7 @@ shinyUI(navbarPage("Sales Activity Report",
                             column(3, wellPanel(
                               uiOutput("segment_sale"),
                               uiOutput("sales_rep"),
+                              uiOutput("sales_rep1"),
                               uiOutput('dateRange_sale'),
                               uiOutput('year_sale'),
                               br(),
@@ -152,6 +153,7 @@ shinyUI(navbarPage("Sales Activity Report",
                                        checkboxInput('avg_self_sale'
                                                      ,'Individual Average'),
                                        checkboxInput("SO_no","Show No of Sales Order"),
+                                       checkboxInput("com_so","Compare with other sales rep"),
                                        downloadButton('downloadSales'
                                                       ,'Download Sales Table'))
                               ))
