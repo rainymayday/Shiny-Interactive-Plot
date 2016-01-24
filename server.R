@@ -1,17 +1,12 @@
-options(shiny.maxRequestSize=30*1024^2) 
+options(java.parameters = "-Xmx8g" )
 library(shiny)
 library(reshape2)
 library(gridExtra)
-library(ggplot2)
 library(plyr)
 library(scales)
 require(lubridate)
 library(ISOweek)
-if(!require(rCharts)){
-  require(devtools)
-  install_github('ramnathv/rCharts')
-  library(rCharts)
-}
+require(XLConnect)
 require(rCharts)
 date_in_week <- function(year, week, weekday=7){
   w <- paste0(year, "-W", sprintf("%02d", week), "-", weekday)
@@ -28,7 +23,8 @@ shinyServer(function(input, output,session) {
     if (is.null(infile)) {
       return(NULL)
     }
-    df <- read.csv(infile$datapath)
+    wb <- XLConnect::loadWorkbook(infile$datapath)
+    df <- XLConnect::readWorksheet(wb,sheet = 1)
     return(df)
   })
   num_confex <- reactive({
@@ -46,7 +42,8 @@ shinyServer(function(input, output,session) {
     }
     isolate(
       {
-        leads <- read.csv(infile$datapath)
+        wb <- XLConnect::loadWorkbook(infile$datapath)
+        leads <- XLConnect::readWorksheet(wb,sheet = 1)
         leads$Date.Created <- as.character(as.Date(leads$Date.Created, "%d/%m/%Y"))
         leads <- merge(leads, salesrep(),by.x= "Lead.Generator",by.y = "sale_rep")
         leads_date_generator <- count(leads,c("Date.Created","Lead.Generator","segment"))
@@ -64,7 +61,8 @@ shinyServer(function(input, output,session) {
       return(NULL)
     }
     isolate({
-      sales <- read.csv(infile$datapath)
+      wb <- XLConnect::loadWorkbook(infile$datapath)
+      sales <- XLConnect::readWorksheet(wb,sheet = 1)
       sales <- subset(sales,sales$Sales.Rep.2 %in% as.character(salesrep()$sale_rep))
       col <- c("SO.Number","Date.Created","Name","Sales.Rep.2","Event.Name"
                ,"Maximum.of.Amount..Net.of.Tax.")
@@ -78,35 +76,17 @@ shinyServer(function(input, output,session) {
     })
     return(sales)
   })
-  contract <- reactive({
-    infile <- input$file3
-    if (is.null(infile)){
-      return(NULL)
-    }
-    isolate({
-      contract <- read.csv(infile$datapath)
-      contract <- subset(contract,contract$Created.By %in% as.character(salesrep()$sale_rep))
-      col <- c("Internal.ID","Date.Created","Created.By","Name","Amount..Net.of.Tax.")
-      contract <- contract[,col]
-      contract$Amount..Net.of.Tax. <- factor2numeric(contract$Amount..Net.of.Tax.)
-      contract$Date.Created <- as.character(as.Date(contract$Date.Created, "%d/%m/%Y"))
-      contract <- merge(contract, salesrep(),by.x= "Created.By",by.y = "sale_rep")
-      contract$week <- week(contract$Date.Created)
-      contract$month <-lubridate::month(contract$Date.Created,label = TRUE)
-      contract$year <- year(contract$Date.Created)
-    })
-    return (contract)
-  })
   proposal <- reactive({
     infile <- input$file4
     if (is.null(infile)){
       return(NULL)
     }
     isolate({
-      proposal <- read.csv(infile$datapath)
+      wb <- XLConnect::loadWorkbook(infile$datapath)
+      proposal <- XLConnect::readWorksheet(wb,sheet = 1)
       proposal <- proposal[!duplicated(proposal),]
       cols <- c("Internal.ID","Date.Created","Name","Created.By"
-                ,"Amount..Net.of.Tax.")
+                ,"Amount..Net.of.Tax.","Contract.Sent.Date")
       proposal <- proposal[,cols]
       proposal$Amount..Net.of.Tax. <- factor2numeric(proposal$Amount..Net.of.Tax.)
       proposal <- subset(proposal,proposal$Created.By %in% as.character(salesrep()$sale_rep))
@@ -117,9 +97,15 @@ shinyServer(function(input, output,session) {
       proposal$year <- year(proposal$Date.Created)
     })
     return (proposal)
-    
   })
-  
+  contract <- reactive({
+    contract <- proposal()
+    contract <- subset(contract,contract$Contract.Sent.Date!="")
+    contract <- subset(contract,contract$Created.By %in% as.character(salesrep()$sale_rep))
+    col <- c("Internal.ID","Date.Created","Created.By","Name","Amount..Net.of.Tax.","year","month","week","segment")
+    contract <- contract[,col]
+    return (contract)
+  })
   # generate summary tables
   LeadsTable <- reactive({
     validate(
@@ -510,19 +496,19 @@ shinyServer(function(input, output,session) {
     )
     head(sales())
     })
-  output$contact <- renderTable({
-    validate(
-      need(contract() != "","Please Upload contract table!")
-    )
-    head(contract())
-  })
+  
   output$proposal <- renderTable({
     validate(
       need(proposal() != "","Please Upload proposal table")
     )
     head(proposal())
   })
-  
+  output$contact <- renderTable({
+    validate(
+      need(contract() != "","Please Upload contract table!")
+    )
+    head(contract())
+  })
   # reactive UI
   output$segment <- renderUI({
     selectInput("segment","Segment",choices = as.character(salesrep()$segment),selected = 1)
@@ -815,7 +801,7 @@ shinyServer(function(input, output,session) {
   observe({
     updateSelectInput(session,inputId ="RepLevel" ,
                       label ="Sales Rep" ,
-                      choices = unique(as.character(salesrep()$sale_rep[salesrep()$segment == input$segLevel])))
+                      choices = unique(as.character(salesrep()$sale_rep[salesrep()$segment %in% input$segLevel])))
   })
   
   # calculate avg level within segment for comparison
@@ -1254,6 +1240,13 @@ shinyServer(function(input, output,session) {
         names(data.month) <- c("year","month","leads")
         data.month <- subset(data.month,trimws(data.month$year,"both") == trimws(input$year,"both"))
         h$series(name = input$LeadsGen1, type = 'column', color = 'purple',
+                 data = data.month$leads)
+      }
+      if(input$compare_last_year){
+        data.month <- aggregate(data$freq, by = list(data$year,data$month),FUN = sum)
+        names(data.month) <- c("year","month","leads")
+        data.month <- subset(data.month,as.numeric(data.month$year) == as.numeric(input$year)-1)
+        h$series(name = as.numeric(input$year)-1, type = 'column', color = 'green',
                  data = data.month$leads)
       }
       

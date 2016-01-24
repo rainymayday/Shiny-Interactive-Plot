@@ -5,35 +5,23 @@ shinyUI(navbarPage("Sales Activity Report",
                    tabPanel("Upload Data File For Analysis",
                             column(3, wellPanel(
                               fileInput('file0', 'Upload Sales_rep Table',
-                                        accept=c('text/csv', 
-                                                 'text/comma-separated-values,text/plain', 
-                                                 '.csv'),multiple = FALSE),
+                                        multiple = FALSE),
                               fileInput('file1', 'Upload Leads Table',
-                                        accept=c('text/csv', 
-                                                 'text/comma-separated-values,text/plain', 
-                                                 '.csv'),multiple = FALSE),
-                              fileInput('file3', 'Upload Contract Table ',
-                                        accept=c('text/csv', 
-                                                 'text/comma-separated-values,text/plain', 
-                                                 '.csv'),multiple = FALSE),
+                                        multiple = FALSE),
                               fileInput('file4', 'Upload Proposal Table ',
-                                        accept=c('text/csv', 
-                                                 'text/comma-separated-values,text/plain', 
-                                                 '.csv'),multiple = FALSE),
+                                        multiple = FALSE),
                               fileInput('file2', 'Upload Sales Order Table ',
-                                        accept=c('text/csv', 
-                                                 'text/comma-separated-values,text/plain', 
-                                                 '.csv'),multiple = FALSE)
+                                        multiple = FALSE)
                               )
                             ),
                             mainPanel(
                               tabsetPanel(
                                 type = "tab",
-                                tabPanel("Sales_Rep",tableOutput('salesperson')),
+                                tabPanel("Sales Rep",tableOutput('salesperson')),
                                 tabPanel("Leads",tableOutput('leads')),
-                                tabPanel("contract",tableOutput("contact")),
                                 tabPanel("Proposal",tableOutput("proposal")),
-                                tabPanel("SalesOrder",tableOutput("sales"))
+                                tabPanel("Contract",tableOutput("contact")),
+                                tabPanel("Sales Order",tableOutput("sales"))
                               )
                             )),
                             
@@ -57,6 +45,7 @@ shinyUI(navbarPage("Sales Activity Report",
                                        checkboxInput('avg_line','Team Average'),
                                        checkboxInput("avg_self","Individual Average"),
                                        checkboxInput("compare_rep","Compare with Other sales Rep"),
+                                       checkboxInput("compare_last_year","Compare with last year performance"),
                                        downloadButton('downloadLeads','Download Leads Table'))
                               ))
                             ),
@@ -164,7 +153,6 @@ shinyUI(navbarPage("Sales Activity Report",
                                           tabPanel("SalesTable",dataTableOutput("SalesTable"))
                                           
                               ))
-                            
                             ),
                   
                    tabPanel("Summary",
