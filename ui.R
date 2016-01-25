@@ -107,18 +107,13 @@ shinyUI(
                                        checkboxInput("com_con","Compare with other contractor creators"),
                                        downloadButton('downloadContract','Download Contract Table')
                                        )
-                                
                               )
-                              
                             )),
                             mainPanel(
                               tabsetPanel(type = "tab",
                                           tabPanel("Contract Plot",showOutput("ContractPlots","highcharts"), icon = icon("bar-chart-o")),
-                                          tabPanel("Contract Table",tableOutput("ContractTable"), icon = icon("table")))  
-                              
+                                          tabPanel("Contract Table",dataTableOutput("ContractTable"), icon = icon("table")))  
                             )),
-                   
-                   
                    tabPanel("Sales Order",
                             column(3, wellPanel(
                               uiOutput("segment_sale"),
@@ -159,7 +154,7 @@ shinyUI(
                               fluidRow(
                                 column(7, radioButtons("reportty", "Report Type",
                                                        c("By month"="month","By week"="week")
-                                                       , selected="week")
+                                                       , selected="month")
                                 )),
                               uiOutput("year_summary"),
                               uiOutput("selectList"),

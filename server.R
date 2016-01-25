@@ -639,7 +639,7 @@ shinyServer(function(input, output,session) {
   output$SalesTable <- renderDataTable({
     SalesTable()
   })
-  output$ContractTable <- renderTable({
+  output$ContractTable <- renderDataTable({
     validate(
       need(contract() != "","Please Upload contract table!")
     )
@@ -1104,6 +1104,7 @@ shinyServer(function(input, output,session) {
           proposal.month <- aggregate(data$Amount..Net.of.Tax.,
                                       by = list(data$year,data$month),FUN = sum)
           names(proposal.month) <- c("year","month","amount")
+          proposal.month <- subset(proposal.month,proposal.month$year == input$year_pro )
           h$series(name = input$Proposal_creator1, type = 'column',color="purple",
                    data = proposal.month$amount)
     
