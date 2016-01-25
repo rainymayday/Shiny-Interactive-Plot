@@ -1,7 +1,7 @@
 library(shiny)
 require(rCharts)
-options(RCHART_LIB = 'polycharts')
-shinyUI(navbarPage("Sales Activity Report",
+shinyUI(
+  navbarPage("Sales Activity Report",
                    tabPanel("Upload Data File For Analysis",
                             column(3, wellPanel(
                               fileInput('file0', 'Upload Sales_rep Table',
@@ -17,11 +17,11 @@ shinyUI(navbarPage("Sales Activity Report",
                             mainPanel(
                               tabsetPanel(
                                 type = "tab",
-                                tabPanel("Sales Rep",tableOutput('salesperson')),
-                                tabPanel("Leads",tableOutput('leads')),
-                                tabPanel("Proposal",tableOutput("proposal")),
-                                tabPanel("Contract",tableOutput("contact")),
-                                tabPanel("Sales Order",tableOutput("sales"))
+                                tabPanel("Sales Rep",tableOutput('salesperson'), icon = icon("table")),
+                                tabPanel("Leads",tableOutput('leads'), icon = icon("table")),
+                                tabPanel("Proposal",tableOutput("proposal"), icon = icon("table")),
+                                tabPanel("Contract",tableOutput("contact"), icon = icon("table")),
+                                tabPanel("Sales Order",tableOutput("sales"), icon = icon("table"))
                               )
                             )),
                             
@@ -51,8 +51,8 @@ shinyUI(navbarPage("Sales Activity Report",
                             ),
                             mainPanel(
                               tabsetPanel(type="tab",
-                                          tabPanel("LeadsPlot",showOutput("LeadsPlot","highcharts")),
-                                          tabPanel("LeadsTable",dataTableOutput("LeadsTable"))
+                                          tabPanel("Leads Plot",showOutput("LeadsPlot","highcharts"), icon = icon("bar-chart-o")),
+                                          tabPanel("Leads Table",dataTableOutput("LeadsTable"), icon = icon("table"))
                                           ))),
                    tabPanel("Proposal",
                             column(3,wellPanel(
@@ -81,9 +81,9 @@ shinyUI(navbarPage("Sales Activity Report",
                             )
                             ),
                             mainPanel(tabsetPanel(type="tab",
-                                                  tabPanel("Proposal Plots",showOutput("ProposalPlots","highcharts")),
-                                                  tabPanel("Proposal Tables",
-                                                           dataTableOutput("ProposalTable"))))),
+                                                  tabPanel("Proposal Plot",showOutput("ProposalPlots","highcharts"), icon = icon("bar-chart-o")),
+                                                  tabPanel("Proposal Table",
+                                                           dataTableOutput("ProposalTable"), icon = icon("table"))))),
                    tabPanel("Contract",
                             column(3,wellPanel(
                               uiOutput("segment_con"),
@@ -113,8 +113,8 @@ shinyUI(navbarPage("Sales Activity Report",
                             )),
                             mainPanel(
                               tabsetPanel(type = "tab",
-                                          tabPanel("Contract Plots",showOutput("ContractPlots","highcharts")),
-                                          tabPanel("Contract Tables",tableOutput("ContractTable")))  
+                                          tabPanel("Contract Plot",showOutput("ContractPlots","highcharts"), icon = icon("bar-chart-o")),
+                                          tabPanel("Contract Table",tableOutput("ContractTable"), icon = icon("table")))  
                               
                             )),
                    
@@ -133,7 +133,6 @@ shinyUI(navbarPage("Sales Activity Report",
                                                        , selected="day")
                                 )
                               ),
-                              
                               fluidRow(
                                 column(12,
                                        h5(strong('Plot Options')),
@@ -149,8 +148,8 @@ shinyUI(navbarPage("Sales Activity Report",
                             ),
                             mainPanel(
                               tabsetPanel(type="tab",
-                                          tabPanel("SalesPlot",showOutput("SalesPlot","highcharts")),
-                                          tabPanel("SalesTable",dataTableOutput("SalesTable"))
+                                          tabPanel("Sales Plot",showOutput("SalesPlot","highcharts"), icon = icon("bar-chart-o")),
+                                          tabPanel("Sales Table",dataTableOutput("SalesTable"), icon = icon("table"))
                                           
                               ))
                             ),
@@ -185,7 +184,7 @@ shinyUI(navbarPage("Sales Activity Report",
                                                             tableOutput("proposal1")
                                                             ),
                                                      column(6,h3("Sales Order Summary"),
-                                                            tableOutput("so1")))
+                                                            tableOutput("so1"))), icon = icon("table")
                                           )
                                           )
                             ))
