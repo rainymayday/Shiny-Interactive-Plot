@@ -169,7 +169,7 @@ shinyUI(
                                           ),
                                           tabPanel("Summary Plots",
                                                    fluidRow(
-                                                     showOutput("SummaryLeads","nvd3") 
+                                                     showOutput("SummaryLeads","nvd3")
                                                    ),
                                                    fluidRow(
                                                      showOutput("SummaryProposals","nvd3") 

@@ -8,17 +8,6 @@ require(XLConnect)
 require(rCharts)
 library(DT)
 
-date_in_week <- function(year, week, weekday=7){
-  w <- paste0(year, "-W", sprintf("%02d", week), "-", weekday)
-  return(paste(ISOweek2date(w),ISOweek2date(w)+7,sep = " ~ "))
-}
-factor2numeric <- function(x){
-  x.new <- as.numeric(gsub(",","",as.character(x)))
-  return (x.new)
-}
-merge.all <- function(x, y) {
-  merge(x, y, all=TRUE, by=c("Created.By","Segment"))
-}
 shinyServer(function(input, output,session) {
   salesrep <- reactive({
     infile <- input$file0
@@ -115,7 +104,8 @@ shinyServer(function(input, output,session) {
     validate(
       need(leads() != "","Please Upload leads table!")
     )
-    LeadsTable <- aggregate(leads()$freq,by = list(leads()$Created.By,leads()$segment),FUN = sum)
+    df <- subset(leads(),leads()$year == input$year_summary)
+    LeadsTable <- aggregate(df$freq,by = list(df$Created.By,df$segment),FUN = sum)
     names(LeadsTable) <- c("Created.By","Segment","No_of_Leads")
     return(LeadsTable)
   })
@@ -123,11 +113,12 @@ shinyServer(function(input, output,session) {
     validate(
       need(sales() != "","Please Upload sales table!")
     )
-    SalesTable <- aggregate(sales()$Maximum.of.Amount..Net.of.Tax.
-                            ,by = list(sales()$Pro...Created.By,sales()$segment),FUN = sum)
+    df <- subset(sales(),sales()$year == input$year_summary)
+    SalesTable <- aggregate(df$Maximum.of.Amount..Net.of.Tax.
+                            ,by = list(df$Pro...Created.By,df$segment),FUN = sum)
     names(SalesTable) <- c("Created.By","Segment","Sales_Amount")
-    SalesTable_No <- aggregate(sales()$Event.Name
-                               ,by = list(sales()$Pro...Created.By,sales()$segment),FUN = length)
+    SalesTable_No <- aggregate(df$Event.Name
+                               ,by = list(df$Pro...Created.By,df$segment),FUN = length)
     SalesTable$No_of_Sales <- SalesTable_No[,3]
     SalesTable$Sales_Amount <- paste("$",comma(SalesTable$Sales_Amount))
     return(SalesTable)
@@ -136,11 +127,12 @@ shinyServer(function(input, output,session) {
     validate(
       need(contract() != "","Please Upload contract table")
     )
-    contractTable <- aggregate(contract()$Amount..Net.of.Tax.
-                               ,by = list(contract()$Created.By,contract()$segment),FUN = sum)
+    df <- subset(contract(),contract()$year == input$year_summary)
+    contractTable <- aggregate(df$Amount..Net.of.Tax.
+                               ,by = list(df$Created.By,df$segment),FUN = sum)
     names(contractTable) <- c("Created.By","Segment","Contract_Amount")
-    contractTable_No <- aggregate(contract()$Internal.ID
-                                  ,by = list(contract()$Created.By,contract()$segment),FUN=length)
+    contractTable_No <- aggregate(df$Internal.ID
+                                  ,by = list(df$Created.By,df$segment),FUN=length)
     contractTable$No_Of_Contract <- contractTable_No[,3]
     contractTable$Contract_Amount <- paste("$",comma(contractTable$Contract_Amount))
     return(contractTable)
@@ -149,9 +141,10 @@ shinyServer(function(input, output,session) {
     validate(
       need(proposal() != "","Please Upload proposal table")
     )
-    ProposalTable <- aggregate(proposal()$Amount..Net.of.Tax.,by = list(proposal()$Created.By,proposal()$segment),FUN = sum)
+    df <- subset(proposal(),proposal()$year == input$year_summary)
+    ProposalTable <- aggregate(df$Amount..Net.of.Tax.,by = list(df$Created.By,df$segment),FUN = sum)
     names(ProposalTable) <- c("Created.By","Segment","Proposal_Amount")
-    ProposalTable_No <- aggregate(proposal()$Internal.ID,by = list(proposal()$Created.By,proposal()$segment),FUN = length)
+    ProposalTable_No <- aggregate(df$Internal.ID,by = list(df$Created.By,df$segment),FUN = length)
     ProposalTable$No_of_Proposal <- ProposalTable_No[,3]
     ProposalTable$Proposal_Amount <- paste("$",comma(ProposalTable$Proposal_Amount))
     return(ProposalTable)
@@ -161,93 +154,7 @@ shinyServer(function(input, output,session) {
     output <- Reduce(merge.all, DataList)
     return(output)
   })
-  
-  # team avg level
-  team_avg_leads <- reactive({
-    df <- leads()
-    if(input$reportty == "month"){
-        df.sum <- aggregate(df$freq,by = list(df$year,df$month,df$segment),FUN = sum)
-        names(df.sum) <- c("year","month","segment","leads")
-    }else if(input$reportty == "week"){
-        df.sum <- aggregate(df$freq,by = list(df$year,df$week,df$segment),FUN = sum)
-        names(df.sum) <- c("year","week","segment","leads")
-    }
-      df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary & df.sum$segment %in% input$segLevel))
-    return(df.sum.1)
-  })
-  team_avg_so <- reactive({
-    df <- sales()
-    if(input$reportty == "month"){
-      df.sum <- aggregate(df$Maximum.of.Amount..Net.of.Tax.,by = list(df$year,df$month,df$segment),FUN = sum)
-      names(df.sum) <- c("year","month","segment","amount")
-    }else if(input$reportty == "week"){
-      df.sum <- aggregate(df$Maximum.of.Amount..Net.of.Tax.,by = list(df$year,df$week,df$segment),FUN = sum)
-      names(df.sum) <- c("year","week","segment","amount")
-    }
-    df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary & df.sum$segment %in% input$segLevel))
-    return(df.sum.1)
-    
-  })
-  team_avg_so_no <- reactive({
-    df <- sales()
-    if(input$reportty == "month"){
-      df.sum <- count(df,c("year","month","segment"))
-      names(df.sum) <- c("year","month","segment","no")
-    }else if(input$reportty == "week"){
-      df.sum <- count(df,c("year","week","segment"))
-      names(df.sum) <- c("year","week","segment","no")
-    }
-    df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary & df.sum$segment %in% input$segLevel))
-    return(df.sum.1)
-  })
-  team_avg_cont <- reactive({
-    df <- contract()
-    if(input$reportty == "month"){
-      df.sum <- aggregate(df$Amount..Net.of.Tax.,by = list(df$year,df$month,df$segment),FUN = sum)
-      names(df.sum) <- c("year","month","segment","amount")
-    }else if(input$reportty == "week"){
-      df.sum <- aggregate(df$Amount..Net.of.Tax.,by = list(df$year,df$week,df$segment),FUN = sum)
-      names(df.sum) <- c("year","week","segment","amount")
-    }
-    df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary & df.sum$segment %in% input$segLevel))
-    return(df.sum.1)
-  })
-  team_avg_cont_no <- reactive({
-    df <- contract()
-    if(input$reportty == "month"){
-      df.sum <- count(df,c("year","month","segment"))
-      names(df.sum) <- c("year","month","segment","no")
-    }else if(input$reportty == "week"){
-      df.sum <- count(df,c("year","week","segment"))
-      names(df.sum) <- c("year","week","segment","no")
-    }
-    df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary & df.sum$segment %in% input$segLevel))
-    return(df.sum.1)
-  })
-  team_avg_prop <- reactive({
-    df <- proposal()
-    if(input$reportty == "month"){
-      df.sum <- aggregate(df$Amount..Net.of.Tax.,by = list(df$year,df$month,df$segment),FUN = sum)
-      names(df.sum) <- c("year","month","segment","amount")
-    }else if(input$reportty == "week"){
-      df.sum <- aggregate(df$Amount..Net.of.Tax.,by = list(df$year,df$week,df$segment),FUN = sum)
-      names(df.sum) <- c("year","week","segment","amount")
-    }
-    df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary & df.sum$segment %in% input$segLevel))
-    return(df.sum.1)
-  })
-  team_avg_prop_no <- reactive({
-    df <- proposal()
-    if(input$reportty == "month"){
-      df.sum <- count(df,c("year","month","segment"))
-      names(df.sum) <- c("year","month","segment","no")
-    }else if(input$reportty == "week"){
-      df.sum <- count(df,c("year","week","segment"))
-      names(df.sum) <- c("year","week","segment","no")
-    }
-    df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary & df.sum$segment %in% input$segLevel))
-    return(df.sum.1)
-  })
+ 
 
   # show tables in the beginning, for users to check the correctness of the table
   output$salesperson <- renderTable({
