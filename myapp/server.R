@@ -1,13 +1,13 @@
 options(java.parameters = "-Xmx8g" )
 library(shiny)
-library(reshape2)
-library(gridExtra)
 library(plyr)
 library(scales)
 require(lubridate)
 library(ISOweek)
 require(XLConnect)
 require(rCharts)
+library(DT)
+
 date_in_week <- function(year, week, weekday=7){
   w <- paste0(year, "-W", sprintf("%02d", week), "-", weekday)
   return(paste(ISOweek2date(w),ISOweek2date(w)+7,sep = " ~ "))
@@ -16,7 +16,9 @@ factor2numeric <- function(x){
   x.new <- as.numeric(gsub(",","",as.character(x)))
   return (x.new)
 }
-
+merge.all <- function(x, y) {
+  merge(x, y, all=TRUE, by=c("Created.By","Segment"))
+}
 shinyServer(function(input, output,session) {
   salesrep <- reactive({
     infile <- input$file0
@@ -45,15 +47,17 @@ shinyServer(function(input, output,session) {
         wb <- XLConnect::loadWorkbook(infile$datapath)
         leads <- XLConnect::readWorksheet(wb,sheet = 1)
         leads$Date.Created <- as.character(as.Date(leads$Date.Created, "%d/%m/%Y"))
-        leads <- merge(leads, salesrep(),by.x= "Lead.Generator",by.y = "sale_rep")
-        leads_date_generator <- count(leads,c("Date.Created","Lead.Generator","segment"))
-        leads_date_generator$Lead.Generator <- as.factor(leads_date_generator$Lead.Generator)
-        leads_date_generator$week <- week(leads_date_generator$Date.Created)
-        leads_date_generator$month <- lubridate::month(leads_date_generator$Date.Created,label = TRUE)
-        leads_date_generator$year <- year(leads_date_generator$Date.Created)
+        leads <- merge(leads, salesrep(),by.x= "Created.By",by.y = "sale_rep")
+        leads <- aggregate(leads$Internal.ID,by = list(leads$Date.Create,leads$Created.By,leads$segment),
+                                          FUN = length)
+        names(leads) <- c("Date.Created","Created.By","segment","freq")
+        leads$Created.By <- as.factor(leads$Created.By)
+        leads$week <- week(leads$Date.Created)
+        leads$month <- lubridate::month(leads$Date.Created,label = TRUE)
+        leads$year <- year(leads$Date.Created)
       }
     )
-    return(leads_date_generator)
+    return(leads)
   })
   sales <- reactive({
     infile <- input$file2
@@ -63,16 +67,16 @@ shinyServer(function(input, output,session) {
     isolate({
       wb <- XLConnect::loadWorkbook(infile$datapath)
       sales <- XLConnect::readWorksheet(wb,sheet = 1)
-      sales <- subset(sales,sales$Sales.Rep.2 %in% as.character(salesrep()$sale_rep))
-      col <- c("SO.Number","Date.Created","Name","Sales.Rep.2","Event.Name"
-               ,"Maximum.of.Amount..Net.of.Tax.")
+      sales <- subset(sales,sales$Pro...Created.By %in% as.character(salesrep()$sale_rep))
+      col <- c("SO.Number","Date.Created","Name","Event.Name"
+               ,"Maximum.of.Amount..Net.of.Tax.","Pro...Created.By")
       sales <- sales[,col]
       sales$Maximum.of.Amount..Net.of.Tax. <- factor2numeric(sales$Maximum.of.Amount..Net.of.Tax.)
-      sales <- merge(sales, salesrep(),by.x= "Sales.Rep.2",by.y = "sale_rep")
-      sales$Date.Created <- as.character(as.Date(sales$Date.Created, "%d/%m/%Y"))
-      sales$week <- week(sales$Date.Created)
+      sales <- merge(sales, salesrep(),by.x= "Pro...Created.By",by.y = "sale_rep")
+      sales$Date.Created <- as.character(as.Date(sales$Date.Created, "%d/%m/%Y",origin="1970-01-01"))
+      sales$week <- lubridate::week(sales$Date.Created)
       sales$month <- lubridate::month(sales$Date.Created,label = TRUE)
-      sales$year <- year(sales$Date.Created)
+      sales$year <- lubridate::year(sales$Date.Created)
     })
     return(sales)
   })
@@ -90,7 +94,7 @@ shinyServer(function(input, output,session) {
       proposal <- proposal[,cols]
       proposal$Amount..Net.of.Tax. <- factor2numeric(proposal$Amount..Net.of.Tax.)
       proposal <- subset(proposal,proposal$Created.By %in% as.character(salesrep()$sale_rep))
-      proposal$Date.Created <- as.character(as.Date(proposal$Date.Created, "%d/%m/%Y"))
+      proposal$Date.Created <- as.character(as.Date(proposal$Date.Created, "%d/%m/%Y",origin="1970-01-01"))
       proposal <- merge(proposal, salesrep(),by.x= "Created.By",by.y = "sale_rep")
       proposal$week <- week(proposal$Date.Created)
       proposal$month <- lubridate::month(proposal$Date.Created,label = TRUE)
@@ -111,8 +115,8 @@ shinyServer(function(input, output,session) {
     validate(
       need(leads() != "","Please Upload leads table!")
     )
-    LeadsTable <- aggregate(leads()$freq,by = list(leads()$Lead.Generator,leads()$segment),FUN = sum)
-    names(LeadsTable) <- c("Sale_rep","Segment","No of Leads")
+    LeadsTable <- aggregate(leads()$freq,by = list(leads()$Created.By,leads()$segment),FUN = sum)
+    names(LeadsTable) <- c("Created.By","Segment","No_of_Leads")
     return(LeadsTable)
   })
   SalesTable <- reactive({
@@ -120,10 +124,10 @@ shinyServer(function(input, output,session) {
       need(sales() != "","Please Upload sales table!")
     )
     SalesTable <- aggregate(sales()$Maximum.of.Amount..Net.of.Tax.
-                            ,by = list(sales()$Sales.Rep.2,sales()$segment),FUN = sum)
-    names(SalesTable) <- c("Sale_rep","Segment","Sales_Amount")
+                            ,by = list(sales()$Pro...Created.By,sales()$segment),FUN = sum)
+    names(SalesTable) <- c("Created.By","Segment","Sales_Amount")
     SalesTable_No <- aggregate(sales()$Event.Name
-                               ,by = list(sales()$Sales.Rep.2,sales()$segment),FUN = length)
+                               ,by = list(sales()$Pro...Created.By,sales()$segment),FUN = length)
     SalesTable$No_of_Sales <- SalesTable_No[,3]
     SalesTable$Sales_Amount <- paste("$",comma(SalesTable$Sales_Amount))
     return(SalesTable)
@@ -134,11 +138,11 @@ shinyServer(function(input, output,session) {
     )
     contractTable <- aggregate(contract()$Amount..Net.of.Tax.
                                ,by = list(contract()$Created.By,contract()$segment),FUN = sum)
-    names(contractTable) <- c("Created.By","Segment","Total Amount")
-    contractTable_No <- aggregate(contract()$Amount..Net.of.Tax.
+    names(contractTable) <- c("Created.By","Segment","Contract_Amount")
+    contractTable_No <- aggregate(contract()$Internal.ID
                                   ,by = list(contract()$Created.By,contract()$segment),FUN=length)
     contractTable$No_Of_Contract <- contractTable_No[,3]
-    contractTable$`Total Amount` <- paste("$",comma(contractTable$`Total Amount`))
+    contractTable$Contract_Amount <- paste("$",comma(contractTable$Contract_Amount))
     return(contractTable)
   })
   ProposalTable <- reactive({
@@ -146,78 +150,18 @@ shinyServer(function(input, output,session) {
       need(proposal() != "","Please Upload proposal table")
     )
     ProposalTable <- aggregate(proposal()$Amount..Net.of.Tax.,by = list(proposal()$Created.By,proposal()$segment),FUN = sum)
-    names(ProposalTable) <- c("Created.By","Segment","Total Amount")
-    ProposalTable_No <- aggregate(proposal()$Amount..Net.of.Tax.,by = list(proposal()$Created.By,proposal()$segment),FUN = length)
+    names(ProposalTable) <- c("Created.By","Segment","Proposal_Amount")
+    ProposalTable_No <- aggregate(proposal()$Internal.ID,by = list(proposal()$Created.By,proposal()$segment),FUN = length)
     ProposalTable$No_of_Proposal <- ProposalTable_No[,3]
-    ProposalTable$`Total Amount` <- paste("$",comma(ProposalTable$`Total Amount`))
+    ProposalTable$Proposal_Amount <- paste("$",comma(ProposalTable$Proposal_Amount))
     return(ProposalTable)
   })
+  SummaryTable <- reactive({
+    DataList <- list(LeadsTable(),SalesTable(),ContractTable(),ProposalTable())
+    output <- Reduce(merge.all, DataList)
+    return(output)
+  })
   
-  # datasets for summary part
-  leads1 <- reactive({
-    leads1 <-subset(leads(),
-                    leads()$year == input$year_summary)
-    if(input$level == "sales rep"){
-      leads1 <- subset(leads1,trimws(leads1$Lead.Generator,"both") %in% trimws(input$RepLevel,"both"))
-    }else if(input$level == "segment"){
-      leads1 <- subset(leads1,trimws(leads1$segment,"both") %in% trimws(input$segLevel,"both"))
-    }
-    if (input$reportty == "month"){
-      leads1 <- subset(leads1,trimws(leads1$month,"both") == trimws(input$list,"both"))
-    }
-    else if(input$reportty == "week"){
-      leads1 <- subset(leads1,trimws(leads1$week,"both") == trimws(input$list,"both"))
-    }
-    return(leads1)
-  })
-  contract1 <- reactive({
-    contract1 <-subset(contract(),
-                    contract()$year == input$year_summary)
-    if(input$level == "sales rep"){
-      contract1 <- subset(contract1,trimws(contract1$Created.By,"both") %in% trimws(input$RepLevel,"both"))
-    }else if(input$level == "segment"){
-      contract1 <- subset(contract1,trimws(contract1$segment,"both") %in% trimws(input$segLevel,"both"))
-    }
-    if (input$reportty == "month"){
-      contract1 <- subset(contract1,trimws(contract1$month,"both") == trimws(input$list,"both"))
-    }
-    else if(input$reportty == "week"){
-      contract1 <- subset(contract1,trimws(contract1$week,"both") == trimws(input$list,"both"))
-    }
-    return(contract1)
-  })
-  proposal1 <- reactive({
-    proposal1 <-subset(proposal(),
-                       proposal()$year == input$year_summary)
-    if(input$level == "sales rep"){
-      proposal1 <- subset(proposal1,trimws(proposal1$Created.By,"both") %in% trimws(input$RepLevel,"both"))
-    }else if(input$level == "segment"){
-      proposal1 <- subset(proposal1,trimws(proposal1$segment,"both") %in% trimws(input$segLevel,"both"))
-    }
-    if (input$reportty == "month"){
-      proposal1 <- subset(proposal1,trimws(proposal1$month,"both") == trimws(input$list,"both"))
-    }
-    else if(input$reportty == "week"){
-      proposal1 <- subset(proposal1,trimws(proposal1$week,"both") == trimws(input$list,"both"))
-    }
-    return(proposal1)
-  })
-  so1 <- reactive({
-    so1 <-subset(sales(),
-                       sales()$year == input$year_summary)
-    if(input$level == "sales rep"){
-      so1 <- subset(so1,trimws(so1$Sales.Rep.2,"both") %in% trimws(input$RepLevel,"both"))
-    }else if(input$level == "segment"){
-      so1 <- subset(so1,trimws(so1$segment,"both") %in% trimws(input$segLevel,"both"))
-    }
-    if (input$reportty == "month"){
-      so1 <- subset(so1,trimws(so1$month,"both") == trimws(input$list,"both"))
-    }
-    else if(input$reportty == "week"){
-      so1 <- subset(so1,trimws(so1$week,"both") == trimws(input$list,"both"))
-    }
-      return(so1)
-    })
   # team avg level
   team_avg_leads <- reactive({
     df <- leads()
@@ -304,179 +248,7 @@ shinyServer(function(input, output,session) {
     df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary & df.sum$segment %in% input$segLevel))
     return(df.sum.1)
   })
-  # personal avg level
-  personal_avg_leads <- reactive({
-    df <- leads()
-    if(input$reportty == "month"){
-      df.sum <- aggregate(df$freq,by = list(df$year,df$month,df$Lead.Generator),FUN = sum)
-      names(df.sum) <- c("year","month","person","leads")
-    }else if(input$reportty == "week"){
-      df.sum <- aggregate(df$freq,by = list(df$year,df$week,df$Lead.Generator),FUN = sum)
-      names(df.sum) <- c("year","week","person","leads")
-    }
-    df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary & df.sum$person %in% input$RepLevel))
-    return(df.sum.1)
-  })
-  personal_avg_so <- reactive({
-    df <- sales()
-    if(input$reportty == "month"){
-      df.sum <- aggregate(df$Maximum.of.Amount..Net.of.Tax.,
-                          by = list(df$year,df$month,df$Sales.Rep.2),FUN = sum)
-      names(df.sum) <- c("year","month","person","amount")
-    }else if(input$reportty == "week"){
-      df.sum <- aggregate(df$Maximum.of.Amount..Net.of.Tax.,
-                          by = list(df$year,df$week,df$Sales.Rep.2),FUN = sum)
-      names(df.sum) <- c("year","week","person","amount")
-    }
-    df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary & df.sum$person %in% input$RepLevel))
-    return(df.sum.1)
-  })
-  personal_avg_so_no <- reactive({
-    df <- sales()
-    if(input$reportty == "month"){
-      df.sum <- count(df,c("year","month","Sales.Rep.2"))
-      names(df.sum) <- c("year","month","person","no")
-    }else if(input$reportty == "week"){
-      df.sum <- count(df,c("year","week","Sales.Rep.2"))
-      names(df.sum) <- c("year","week","person","no")
-    }
-    df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary & df.sum$person %in% input$RepLevel))
-    return(df.sum.1)
-  })
-  personal_avg_prop <- reactive({
-    df <- proposal()
-    if(input$reportty == "month"){
-      df.sum <- aggregate(df$Amount..Net.of.Tax.,by = list(df$year,df$month,df$Created.By),FUN = sum)
-      names(df.sum) <- c("year","month","person","amount")
-    }else if(input$reportty == "week"){
-      df.sum <- aggregate(df$Amount..Net.of.Tax.,by = list(df$year,df$week,df$Created.By),FUN = sum)
-      names(df.sum) <- c("year","week","person","amount")
-    }
-    df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary & df.sum$person %in% input$RepLevel))
-    return(df.sum.1)
-  })
-  personal_avg_prop_no <- reactive({
-    df <- proposal()
-    if(input$reportty == "month"){
-      df.sum <- count(df,c("year","month","Created.By"))
-      names(df.sum) <- c("year","month","person","no")
-    }else if(input$reportty == "week"){
-      df.sum <- count(df,c("year","week","Created.By"))
-      names(df.sum) <- c("year","week","person","no")
-    }
-    df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary & df.sum$person %in% input$RepLevel))
-    return(df.sum.1) 
-  })
-  personal_avg_cont <- reactive({
-    df <- contract()
-    if(input$reportty == "month"){
-      df.sum <- aggregate(df$Amount..Net.of.Tax.,by = list(df$year,df$month,df$Created.By),FUN = sum)
-      names(df.sum) <- c("year","month","person","amount")
-    }else if(input$reportty == "week"){
-      df.sum <- aggregate(df$Amount..Net.of.Tax.,by = list(df$year,df$week,df$Created.By),FUN = sum)
-      names(df.sum) <- c("year","week","person","amount")
-    }
-    df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary & df.sum$person %in% input$RepLevel))
-    return(df.sum.1)
-  })
-  personal_avg_cont_no <- reactive({
-    df <- contract()
-    if(input$reportty == "month"){
-      df.sum <- count(df,c("year","month","Created.By"))
-      names(df.sum) <- c("year","month","person","no")
-    }else if(input$reportty == "week"){
-      df.sum <- count(df,c("year","week","Created.By"))
-      names(df.sum) <- c("year","week","person","no")
-    }
-    df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary & df.sum$person %in% input$RepLevel))
-    return(df.sum.1)
-  })
-  # whole avg level
-  whole_avg_leads <- reactive({
-    df <- leads()
-    if(input$reportty == "month"){
-      df.sum <- aggregate(df$freq,by = list(df$year,df$month),FUN = sum)
-      names(df.sum) <- c("year","month","leads")
-    }else if(input$reportty == "week"){
-      df.sum <- aggregate(df$freq,by = list(df$year,df$week),FUN = sum)
-      names(df.sum) <- c("year","week","leads")
-    }
-    df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary))
-    return(df.sum.1)
-  })
-  whole_avg_so <- reactive({
-    df <- sales()
-    if(input$reportty == "month"){
-      df.sum <- aggregate(df$Maximum.of.Amount..Net.of.Tax.,by = list(df$year,df$month),FUN = sum)
-      names(df.sum) <- c("year","month","amount")
-    }else if(input$reportty == "week"){
-      df.sum <- aggregate(df$Maximum.of.Amount..Net.of.Tax.,by = list(df$year,df$week),FUN = sum)
-      names(df.sum) <- c("year","week","amount")
-    }
-    df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary))
-    return(df.sum.1)
-  })
-  whole_avg_so_no <- reactive({
-    df <- sales()
-    if(input$reportty == "month"){
-      df.sum <- count(df,c("year","month"))
-      names(df.sum) <- c("year","month","no")
-    }else if(input$reportty == "week"){
-      df.sum <- count(df,c("year","week"))
-      names(df.sum) <- c("year","week","no")
-    }
-    df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary ))
-    return(df.sum.1)
-  })
-  whole_avg_cont <- reactive({
-    df <- contract()
-    if(input$reportty == "month"){
-      df.sum <- aggregate(df$Amount..Net.of.Tax.,by = list(df$year,df$month),FUN = sum)
-      names(df.sum) <- c("year","month","amount")
-    }else if(input$reportty == "week"){
-      df.sum <- aggregate(df$Amount..Net.of.Tax.,by = list(df$year,df$week),FUN = sum)
-      names(df.sum) <- c("year","week","amount")
-    }
-    df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary))
-    return(df.sum.1)
-  })
-  whole_avg_cont_no <- reactive({
-    df <- contract()
-    if(input$reportty == "month"){
-      df.sum <- count(df,c("year","month"))
-      names(df.sum) <- c("year","month","no")
-    }else if(input$reportty == "week"){
-      df.sum <- count(df,c("year","week"))
-      names(df.sum) <- c("year","week","no")
-    }
-    df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary ))
-    return(df.sum.1)
-  })
-  whole_avg_prop <- reactive({
-    df <- proposal()
-    if(input$reportty == "month"){
-      df.sum <- aggregate(df$Amount..Net.of.Tax.,by = list(df$year,df$month),FUN = sum)
-      names(df.sum) <- c("year","month","amount")
-    }else if(input$reportty == "week"){
-      df.sum <- aggregate(df$Amount..Net.of.Tax.,by = list(df$year,df$week),FUN = sum)
-      names(df.sum) <- c("year","week","amount")
-    }
-    df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary))
-    return(df.sum.1)
-  })
-  whole_avg_prop_no <- reactive({
-    df <- proposal()
-    if(input$reportty == "month"){
-      df.sum <- count(df,c("year","month"))
-      names(df.sum) <- c("year","month","no")
-    }else if(input$reportty == "week"){
-      df.sum <- count(df,c("year","week"))
-      names(df.sum) <- c("year","week","no")
-    }
-    df.sum.1 <- subset(df.sum,(df.sum$year==input$year_summary ))
-    return(df.sum.1)
-  })
- 
+
   # show tables in the beginning, for users to check the correctness of the table
   output$salesperson <- renderTable({
     validate(
@@ -610,176 +382,13 @@ shinyServer(function(input, output,session) {
   output$year_summary <- renderUI({
     selectInput("year_summary","Choose the year you want:",choices = sort(sales()$year),selected = 1)
   })
-  output$selectList <- renderUI({
-    validate(
-      need(sales() != "","Please Upload sales table!")
-    )
-    if (input$reportty == "week"){
-      selectInput("list",input$reportty,
-                  choices = sort(week(sales()$Date.Created)),selected = 1)
-    }
-    else if(input$reportty == "month"){
-      selectInput("list",input$reportty,
-                  choices = as.character(sort(lubridate::month(sales()$Date.Created,label = TRUE))),selected = 1)
-    }
-  })
+  
   output$segLevel <- renderUI({
     selectInput("segLevel","segment",choices = as.character(salesrep()$segment),selected = 1)})
-  output$RepLevel<- renderUI({
-    if(input$level == "Sales Rep"){
-      selectInput("RepLevel","Sales Rep",choices = unique(as.character(salesrep()$sales_rep)),selected = 1)
-    }
-    
-  })
-
-  # show tables in each module
-  output$LeadsTable <- renderDataTable({
-    LeadsTable()
-  })
-  output$SalesTable <- renderDataTable({
-    SalesTable()
-  })
-  output$ContractTable <- renderDataTable({
-    validate(
-      need(contract() != "","Please Upload contract table!")
-    )
-    ContractTable()
-  })
-  output$ProposalTable <- renderDataTable({
-    validate(
-      need(proposal() != "","Please Upload proposal table!")
-    )
-    ProposalTable()
-  })
-  
-  # tables in summary part
-  output$leads1 <- renderTable({
-    
-    if(input$level == "Sales Rep" & input$segLevel == "Corporate"){
-      mydf <- data.frame(Leads = c('Total Leads','Team Average','Individual Average'), 
-                         No = c(sum(leads1()$freq),
-                                mean(team_avg_leads()$leads)/num_corporate(),
-                                mean(personal_avg_leads()$leads)), 
-                         check.names = FALSE)
-    }
-    else if(input$level == "Sales Rep" & input$segLevel == "Confex"){
-      mydf <- data.frame(Leads = c('Total Leads','Team Average','Individual Average'), 
-                         No = c(sum(leads1()$freq),
-                                mean(team_avg_leads()$leads)/num_confex(),
-                                mean(personal_avg_leads()$leads)), 
-                         check.names = FALSE)
-    }
-    else if(input$level == "Segment"){
-      mydf <- data.frame(Leads = c('Total Leads','Team Average','Division Average'), 
-                         No = c(sum(leads1()$freq),
-                                mean(team_avg_leads()$leads),
-                                mean(whole_avg_leads()$leads)), 
-                         check.names = FALSE)
-    }
-    return(mydf)
-  },digits=1)
-  output$contract1 <- renderTable({
-    if(input$level == "Sales Rep" & input$segLevel == "Corporate"){
-      mydf <- data.frame(Contract = c('Total Contracts','Team Average','Individual Average'),
-                         No = c(nrow(contract1()),
-                                mean(team_avg_cont_no()$no)/num_corporate(),
-                                mean(personal_avg_cont_no()$no)),
-                         Amount = c(sum(contract1()$Amount..Net.of.Tax.),
-                                    mean(team_avg_cont()$amount)/num_corporate(),
-                                    mean(personal_avg_cont()$amount)),
-                         check.names = FALSE)
-    }else if(input$level == "Sales Rep"& input$segLevel == "Confex"){
-      mydf <- data.frame(Contract = c('Total Contracts','Team Average','Individual Average'),
-                         No = c(nrow(contract1()),
-                                mean(team_avg_cont_no()$no)/num_confex(),
-                                mean(personal_avg_cont_no()$no)),
-                         Amount = c(sum(contract1()$Amount..Net.of.Tax.),
-                                    mean(team_avg_cont()$amount)/num_confex(),
-                                    mean(personal_avg_cont()$amount)), check.names = FALSE)
-    }
-    else if(input$level == "Segment"){
-      mydf <- data.frame(Contract = c('Total Contracts','Team Average','Division Average'),
-                         No = c(nrow(contract1()),
-                                mean(team_avg_cont_no()$no),
-                                mean(whole_avg_cont_no()$no)),
-                         Amount = c(sum(contract1()$Amount..Net.of.Tax.),
-                                    mean(team_avg_cont()$amount),
-                                    mean(whole_avg_cont()$amount)), check.names = FALSE)
-    }
-    mydf$Amount <- round(mydf$Amount,0)
-    mydf$Amount <- paste("$",comma(mydf$Amount))
-    return(mydf)
-  },digits=1)
-  output$proposal1 <- renderTable({
-    if(input$level == "Sales Rep" & input$segLevel == "Corporate"){
-      mydf <- data.frame(Proposal = c('Total Proposals','Team Average','Individual Average'),
-                         No = c(nrow(proposal1()),
-                                mean(team_avg_prop_no()$no)/num_corporate(),
-                                mean(personal_avg_prop_no()$no)),
-                         Amount = c(sum(proposal1()$Amount..Net.of.Tax.),
-                                    mean(team_avg_cont()$amount)/num_corporate(),
-                                    mean(personal_avg_prop()$amount)), 
-                         check.names = FALSE)
-    }
-    else if(input$level == "Sales Rep" & input$segLevel == "Confex"){
-      mydf <- data.frame(Proposal = c('Total Proposals','Team Average','Individual Average'),
-                         No = c(nrow(proposal1()),
-                                mean(team_avg_prop_no()$no)/num_confex(),
-                                mean(personal_avg_prop_no()$no)),
-                         Amount = c(sum(proposal1()$Amount..Net.of.Tax.),
-                                    mean(team_avg_prop()$amount)/num_confex(),
-                                    mean(personal_avg_prop()$amount)),
-                         check.names = FALSE)
-    }
-    else if(input$level == "Segment"){
-      mydf <- data.frame(Proposal = c('Total Proposals','Team Average','Division Average'),
-                         No = c(nrow(proposal1()),
-                                mean(team_avg_prop_no()$no),
-                                mean(whole_avg_prop_no()$no)),
-                         Amount = c(sum(proposal1()$Amount..Net.of.Tax.),
-                                    mean(team_avg_prop()$amount),
-                                    mean(whole_avg_prop()$amount)),
-                         check.names = FALSE)
-    }
-    mydf$No <- round(mydf$No,0)
-    mydf$Amount <- round(mydf$Amount,0)
-    mydf$Amount <- paste("$",comma(mydf$Amount))
-    return(mydf)
-  },digits=1)
-  output$so1 <- renderTable({
-    if(input$level == "Sales Rep" & input$segLevel == "Corporate"){
-      mydf <- data.frame(SalesOrder = c('Total Sales Order','Team Average','Individual Average'),
-                         No = c(nrow(so1()),
-                                mean(team_avg_so_no()$no)/num_corporate(),
-                                mean(personal_avg_so_no()$no)),
-                         Amount = c(sum(so1()$Maximum.of.Amount..Net.of.Tax.),
-                                    mean(team_avg_so()$amount)/num_corporate(),
-                                    mean(personal_avg_so()$amount)),
-                         check.names = FALSE)
-    }else if (input$level == "Sales Rep" & input$segLevel == "Confex"){
-      mydf <- data.frame(SalesOrder = c('Total Sales Order','Team Average','Individual Average'),
-                         No = c(nrow(so1()),
-                                mean(team_avg_so_no()$no)/num_confex(),
-                                mean(personal_avg_so_no()$no)),
-                         Amount = c(sum(so1()$Maximum.of.Amount..Net.of.Tax.),
-                                    mean(team_avg_so()$amount)/num_confex(),
-                                    mean(personal_avg_so()$amount)),
-                         check.names = FALSE)
-    }
-    else if(input$level == "Segment"){
-      mydf <- data.frame(SalesOrder = c('Total Sales Order','Team Average','Division Average'),
-                         No = c(nrow(so1()),
-                                mean(team_avg_so_no()$no),
-                                mean(whole_avg_so_no()$no)),
-                         Amount = c(sum(so1()$Maximum.of.Amount..Net.of.Tax.),
-                                    mean(team_avg_so()$amount),
-                                    mean(whole_avg_so()$amount)), 
-                         check.names = FALSE)
-    }
-    mydf$Amount <- round(mydf$Amount,0)
-    mydf$Amount <- paste("$",comma(mydf$Amount))
-    return(mydf)
-  },digits=1)
+ 
+  output$SummaryTable <- DT::renderDataTable(
+    SummaryTable(), options = list(lengthChange = FALSE)
+  )
 
   # update sales rep based on selected segment
   observe({
@@ -797,11 +406,6 @@ shinyServer(function(input, output,session) {
   observe({
     updateSelectInput(session,inputId = "Proposal_creator",label = "Created by",
                       choices = as.character(salesrep()$sale_rep[salesrep()$segment==input$segment_pro]))
-  })
-  observe({
-    updateSelectInput(session,inputId ="RepLevel" ,
-                      label ="Sales Rep" ,
-                      choices = unique(as.character(salesrep()$sale_rep[salesrep()$segment %in% input$segLevel])))
   })
   
   # calculate avg level within segment for comparison
@@ -915,6 +519,126 @@ shinyServer(function(input, output,session) {
     return(proposal_avg_month)
   })
   
+  output$LeadsPlot <- renderChart2({
+    data <-subset(leads(),trimws(Created.By,"both") %in% trimws(input$LeadsGen,"both"))
+    if(input$plotty == "month"){
+      data.month <- aggregate(data$freq, by = list(data$year,data$month),FUN = sum)
+      names(data.month) <- c("year","month","leads")
+      data.month <- subset(data.month,trimws(data.month$year,"both") == trimws(input$year,"both"))
+      data.month$month <- as.character(sort(data.month$month))
+      leads_avg_month <- subset(leads_avg_month(),trimws(Segment,"both") ==trimws(input$segment,"both"))
+      leads_avg_month <- subset(leads_avg_month,leads_avg_month$Year == input$year)
+      leads_avg_month <- subset(leads_avg_month,leads_avg_month$Month %in% data.month$month)
+      h <- Highcharts$new()
+      h$xAxis(categories = data.month$month,labels = list(rotation = 90, align = "left"))
+      h$yAxis(list(title = list(text = 'Total No')))
+      h$series(name = 'Total No', type = 'column', color = '#4572A7',
+               data = data.month$leads)
+      h$plotOptions(column = list(dataLabels = list(enabled = TRUE)))
+      if (input$avg_line){
+        h$series(name = "Team Average", type = 'spline', color = "orange",
+                 data = leads_avg_month$Leads,dashStyle = "Dash")
+      }
+      if(input$avg_self){
+        h$yAxis(title = list(text = 'Total No'),
+                plotLines = list(list(
+                  value = mean(data.month$leads),
+                  color = '#ff0000',
+                  width = 2,
+                  zIndex = 4,
+                  label = list(text = paste('mean',round(mean(data.month$leads),2),sep = ':'),
+                               style = list( color = '#ff0000', fontWeight = 'bold' )
+                  ))))
+      }
+      if(input$compare_rep){
+        data <-subset(leads(),trimws(Created.By,"both") %in% trimws(input$LeadsGen1,"both"))
+        data.month <- aggregate(data$freq, by = list(data$year,data$month),FUN = sum)
+        names(data.month) <- c("year","month","leads")
+        data.month <- subset(data.month,trimws(data.month$year,"both") == trimws(input$year,"both"))
+        h$series(name = input$LeadsGen1, type = 'column', color = 'purple',
+                 data = data.month$leads)
+      }
+      
+      h$title(text = paste("Leads Generated by ",input$LeadsGen,"Show By Month"))
+      # try to show plots inline
+      h$show("inline")
+      return(h)
+    }
+    else if(input$plotty == "week"){
+      data.week <- aggregate(data$freq, by = list(data$year,data$week),FUN = sum)
+      names(data.week) <- c("year","week","leads")
+      data.week <- subset(data.week,trimws(data.week$year,"both") == trimws(input$year,"both"))
+      leads_avg_week <- subset(leads_avg_week(),trimws(Segment,"both") %in% trimws(input$segment,"both"))
+      leads_avg_week <- subset(leads_avg_week,leads_avg_week$Year == input$year)
+      leads_avg_week <- subset(leads_avg_week,leads_avg_week$Week %in% data.week$week)
+      h <- Highcharts$new()
+      h$xAxis(categories = unique(data.week$week),labels = list(rotation = 90, align = "left"))
+      h$yAxis(title = list(text = 'Total No'))
+
+      h$series(name = 'Total No', type = 'column', color = '#4572A7',
+               data = data.week$leads)
+      h$plotOptions(column = list(dataLabels = list(enabled = TRUE)))
+      if (input$avg_line){
+        h$series(name = "Team Average", type = 'spline', color = "orange",
+                 data = leads_avg_week$Leads,dashStyle = "Dash")
+      }
+      if(input$avg_self){
+        h$yAxis(title = list(text = 'Total No'),
+                plotLines = list(list(
+                  value = mean(data.week$leads),
+                  color = '#ff0000',
+                  width = 2,
+                  zIndex = 4,
+                  label = list(text = paste('mean',round(mean(data.week$leads),2),sep = ':'),
+                               style = list( color = '#ff0000', fontWeight = 'bold' )
+                  ))))      
+      }
+      if(input$compare_rep){
+        data <-subset(leads(),trimws(Created.By,"both") %in% trimws(input$LeadsGen1,"both"))
+        data.week <- aggregate(data$freq, by = list(data$year,data$week),FUN = sum)
+        names(data.week) <- c("year","week","leads")
+        data.week <- subset(data.week,trimws(data.week$year,"both") == trimws(input$year,"both"))
+        h$series(name = input$LeadsGen1, type = 'column', color = 'purple',
+                 data = data.week$leads)
+      }
+      h$title(text = paste("Leads Generated by ",input$LeadsGen,"Show By Week"))
+      return(h)
+    }
+    else if(input$plotty =="day"){
+      leads_sub <- subset(data,as.Date(Date.Created) >= input$dateRange[1]&as.Date(Date.Created) <= input$dateRange[2])
+      leads_avg_day <- subset(leads_avg_day(),trimws(Segment,"both") == trimws(input$segment,"both") )
+      leads_avg_day <- subset(leads_avg_day,leads_avg_day$Date %in% leads_sub$Date.Created)
+      h <- Highcharts$new()
+      h$xAxis(categories = unique(leads_sub$Date.Created),labels = list(rotation = 90, align = "left"))
+      h$yAxis(list(title = list(text = 'Total No')))
+      h$series(name = 'Total No', type = 'spline', color = '#4572A7',
+               data = leads_sub$freq)
+      if (input$avg_line){
+        h$series(name = "Team Average", type = 'spline', color = "orange",
+                 data = leads_avg_day$Leads,dashStyle = "Dash")
+      }
+      if(input$avg_self){
+        
+        h$yAxis(title = list(text = 'Total No'),
+                plotLines = list(list(
+                  value = mean(leads_sub$freq),
+                  color = '#ff0000',
+                  width = 2,
+                  zIndex = 4,
+                  label = list(text = paste('mean',round(mean(leads_sub$freq),2),sep = ':'),
+                               style = list( color = '#ff0000', fontWeight = 'bold' )
+                  )))) 
+      
+      }
+      if(input$compare_rep){
+        data <-subset(leads(),trimws(Created.By,"both") %in% trimws(input$LeadsGen1,"both"))
+        leads_sub <- subset(data,as.Date(Date.Created) >= input$dateRange[1]&as.Date(Date.Created) <= input$dateRange[2])
+        h$series(name = input$LeadsGen1, type = 'spline', color = 'purple',data = leads_sub$freq,dashStyle = "Dash")
+      }
+      h$title(text = paste("Leads Generated by ",input$LeadsGen,"Show By Day"))
+      return(h)
+    }
+  })
   output$ContractPlots <- renderChart2({
     data=subset(contract(),trimws(Created.By,"both") %in% trimws(input$Contract_creator,"both"))
     if(input$plotty_con =="month"){
@@ -946,7 +670,7 @@ shinyServer(function(input, output,session) {
       }
       if(input$avg_self_con){
         h$series(name = "Individual Average", type = 'spline', color = "red",
-                 data = contract.month$avg_amount,dashStyle = "Dash")      
+                 data = contract.month$avg_amount,dashStyle = "Solid")      
       }
       if(input$contract_no){
         h$series(name = 'Total No', type = 'scatter', color = '#89A54E',
@@ -996,7 +720,7 @@ shinyServer(function(input, output,session) {
       }
       if(input$avg_self_con){
         h$series(name = "Individual Average", type = 'spline', color = "red",
-                 data = contract.week$avg_amount,dashStyle = "Dash")      
+                 data = contract.week$avg_amount,dashStyle = "Solid")      
       }
       if(input$contract_no){
         h$series(name = 'Total No', type = 'scatter', color = '#89A54E',
@@ -1042,7 +766,7 @@ shinyServer(function(input, output,session) {
       }
       if(input$avg_self_con){
         h$series(name = "Individual Average", type = 'spline', color = "red",
-                 data = contract.day$avg_amount,dashStyle = "Dash")      
+                 data = contract.day$avg_amount,dashStyle = "Solid")      
       }
       if(input$contract_no){
         h$series(name = 'Total No', type = 'scatter', color = '#89A54E',
@@ -1092,7 +816,7 @@ shinyServer(function(input, output,session) {
       }
       if(input$avg_self_pro){
         h$series(name = "Individual Average", type = 'spline', color = "red",
-                 data = proposal.month$avg_amount,dashStyle = "Dash")      
+                 data = proposal.month$avg_amount,dashStyle = "Solid")      
       }
       if(input$proposal_no){
         h$series(name = 'Total No', type = 'scatter', color = '#89A54E',
@@ -1142,7 +866,7 @@ shinyServer(function(input, output,session) {
       }
       if(input$avg_self_pro){
         h$series(name = "Individual Average", type = 'spline', color = "red",
-                 data = proposal.week$avg_amount,dashStyle = "Dash")      
+                 data = proposal.week$avg_amount,dashStyle = "Solid")      
       }
       if(input$proposal_no){
         h$series(name = 'Total No', type = 'scatter', color = '#89A54E',
@@ -1190,7 +914,7 @@ shinyServer(function(input, output,session) {
       }
       if(input$avg_self_pro){
         h$series(name = "Individual Average", type = 'spline', color = "red",
-                 data = proposal.day$avg_amount,dashStyle = "Dash")      
+                 data = proposal.day$avg_amount,dashStyle = "Solid")      
       }
       if(input$proposal_no){
         h$series(name = 'Total No', type = 'scatter', color = '#89A54E',data = proposal.day$No,yAxis = 1)
@@ -1210,112 +934,8 @@ shinyServer(function(input, output,session) {
       return(h)
     }    
   })
-  output$LeadsPlot <- renderChart2({
-    data <-subset(leads(),trimws(Lead.Generator,"both") %in% trimws(input$LeadsGen,"both"))
-    if(input$plotty == "month"){
-      data.month <- aggregate(data$freq, by = list(data$year,data$month),FUN = sum)
-      names(data.month) <- c("year","month","leads")
-      data.month <- subset(data.month,trimws(data.month$year,"both") == trimws(input$year,"both"))
-      data.month$avg <- mean(data.month$leads)
-      data.month$month <- as.character(sort(data.month$month))
-      leads_avg_month <- subset(leads_avg_month(),trimws(Segment,"both") ==trimws(input$segment,"both"))
-      leads_avg_month <- subset(leads_avg_month,leads_avg_month$Year == input$year)
-      leads_avg_month <- subset(leads_avg_month,leads_avg_month$Month %in% data.month$month)
-      h <- Highcharts$new()
-      h$xAxis(categories = data.month$month,labels = list(rotation = 90, align = "left"))
-      h$yAxis(list(title = list(text = 'Total No')))
-      h$series(name = 'Total No', type = 'column', color = '#4572A7',
-               data = data.month$leads)
-      h$plotOptions(column = list(dataLabels = list(enabled = TRUE)))
-      if (input$avg_line){
-        h$series(name = "Team Average", type = 'spline', color = "orange",
-                 data = leads_avg_month$Leads,dashStyle = "Dash")
-      }
-      if(input$avg_self){
-        h$series(name = "Individual Average", type = 'spline', color = "red",
-                 data = data.month$avg,dashStyle = "Dash")      
-      }
-      if(input$compare_rep){
-        data <-subset(leads(),trimws(Lead.Generator,"both") %in% trimws(input$LeadsGen1,"both"))
-        data.month <- aggregate(data$freq, by = list(data$year,data$month),FUN = sum)
-        names(data.month) <- c("year","month","leads")
-        data.month <- subset(data.month,trimws(data.month$year,"both") == trimws(input$year,"both"))
-        h$series(name = input$LeadsGen1, type = 'column', color = 'purple',
-                 data = data.month$leads)
-      }
-      if(input$compare_last_year){
-        data.month <- aggregate(data$freq, by = list(data$year,data$month),FUN = sum)
-        names(data.month) <- c("year","month","leads")
-        data.month <- subset(data.month,as.numeric(data.month$year) == as.numeric(input$year)-1)
-        h$series(name = as.numeric(input$year)-1, type = 'column', color = 'green',
-                 data = data.month$leads)
-      }
-      
-      h$title(text = paste("Leads Generated by ",input$LeadsGen,"Show By Month"))
-      return(h)
-    }
-    else if(input$plotty == "week"){
-      data.week <- aggregate(data$freq, by = list(data$year,data$week),FUN = sum)
-      names(data.week) <- c("year","week","leads")
-      data.week <- subset(data.week,trimws(data.week$year,"both") == trimws(input$year,"both"))
-      data.week$avg <- mean(data.week$leads)
-      leads_avg_week <- subset(leads_avg_week(),trimws(Segment,"both") %in% trimws(input$segment,"both"))
-      leads_avg_week <- subset(leads_avg_week,leads_avg_week$Year == input$year)
-      leads_avg_week <- subset(leads_avg_week,leads_avg_week$Week %in% data.week$week)
-      h <- Highcharts$new()
-      h$xAxis(categories = unique(data.week$week),labels = list(rotation = 90, align = "left"))
-      h$yAxis(list(title = list(text = 'Total No')))
-      h$series(name = 'Total No', type = 'column', color = '#4572A7',
-               data = data.week$leads)
-      h$plotOptions(column = list(dataLabels = list(enabled = TRUE)))
-      if (input$avg_line){
-        h$series(name = "Team Average", type = 'spline', color = "orange",
-                 data = leads_avg_week$Leads,dashStyle = "Dash")
-      }
-      if(input$avg_self){
-        h$series(name = "Individual Average", type = 'spline', color = "red",
-                 data = data.week$avgv,dashStyle = "Dash")      
-      }
-      if(input$compare_rep){
-        data <-subset(leads(),trimws(Lead.Generator,"both") %in% trimws(input$LeadsGen1,"both"))
-        data.week <- aggregate(data$freq, by = list(data$year,data$week),FUN = sum)
-        names(data.week) <- c("year","week","leads")
-        data.week <- subset(data.week,trimws(data.week$year,"both") == trimws(input$year,"both"))
-        h$series(name = input$LeadsGen1, type = 'column', color = 'purple',
-                 data = data.week$leads)
-      }
-      h$title(text = paste("Leads Generated by ",input$LeadsGen,"Show By Week"))
-      return(h)
-    }
-    else if(input$plotty =="day"){
-      leads_sub <- subset(data,as.Date(Date.Created) >= input$dateRange[1]&as.Date(Date.Created) <= input$dateRange[2])
-      leads_sub$avg <- mean(leads_sub$freq)##argument is not numeric or logical
-      leads_avg_day <- subset(leads_avg_day(),trimws(Segment,"both") == trimws(input$segment,"both") )
-      leads_avg_day <- subset(leads_avg_day,leads_avg_day$Date %in% leads_sub$Date.Created)
-      h <- Highcharts$new()
-      h$xAxis(categories = unique(leads_sub$Date.Created),labels = list(rotation = 90, align = "left"))
-      h$yAxis(list(title = list(text = 'Total No')))
-      h$series(name = 'Total No', type = 'spline', color = '#4572A7',
-               data = leads_sub$freq)
-      if (input$avg_line){
-        h$series(name = "Team Average", type = 'spline', color = "orange",
-                 data = leads_avg_day$Leads,dashStyle = "Dash")
-      }
-      if(input$avg_self){
-        h$series(name = "Individual Average", type = 'spline', color = "red",
-                 data = leads_sub$avg,dashStyle = "Dash")      
-      }
-      if(input$compare_rep){
-        data <-subset(leads(),trimws(Lead.Generator,"both") %in% trimws(input$LeadsGen1,"both"))
-        leads_sub <- subset(data,as.Date(Date.Created) >= input$dateRange[1]&as.Date(Date.Created) <= input$dateRange[2])
-        h$series(name = input$LeadsGen1, type = 'spline', color = 'purple',data = leads_sub$freq,dashStyle = "Dash")
-      }
-      h$title(text = paste("Leads Generated by ",input$LeadsGen,"Show By Day"))
-      return(h)
-    }
-  })
   output$SalesPlot <- renderChart2({
-    data <- subset(sales(),trimws(Sales.Rep.2,"both") %in% trimws(input$sales_rep,"both"))
+    data <- subset(sales(),trimws(Pro...Created.By,"both") %in% trimws(input$sales_rep,"both"))
     if(input$plotty_sale =="month"){
       sales.month <- aggregate(data$Maximum.of.Amount..Net.of.Tax.,by = list(data$year,data$month),FUN = sum)
       names(sales.month) <- c("Year","Month","Amount")
@@ -1343,7 +963,7 @@ shinyServer(function(input, output,session) {
       }
       if(input$avg_self_sale){
         h$series(name = "Individual Average", type = 'spline', color = "red",
-                 data = sales.month$avg_amount,dashStyle = "Dash")      
+                 data = sales.month$avg_amount,dashStyle = "Solid")      
       }
       if(input$SO_no){
         h$series(name = 'Total No', type = 'scatter', color = '#89A54E',
@@ -1351,7 +971,7 @@ shinyServer(function(input, output,session) {
                  yAxis = 1)
       }
       if(input$com_so){
-        data <- subset(sales(),trimws(Sales.Rep.2,"both") %in% trimws(input$sales_rep1,"both"))
+        data <- subset(sales(),trimws(Pro...Created.By,"both") %in% trimws(input$sales_rep1,"both"))
         sales.month <- aggregate(data$Maximum.of.Amount..Net.of.Tax.,by = list(data$year,data$month),FUN = sum)
         names(sales.month) <- c("Year","Month","Amount")
         sales.month <-subset(sales.month,trimws(sales.month$Year,"both") %in% trimws(input$year_sale,"both"))
@@ -1389,7 +1009,7 @@ shinyServer(function(input, output,session) {
       }
       if(input$avg_self_sale){
         h$series(name = "Individual Average", type = 'spline', color = "red",
-                 data = sales.week$avg_amount,dashStyle = "Dash")      
+                 data = sales.week$avg_amount,dashStyle = "Solid")      
       }
       if(input$SO_no){
         h$series(name = 'Total No', type = 'scatter', color = '#89A54E',
@@ -1397,7 +1017,7 @@ shinyServer(function(input, output,session) {
                  yAxis = 1)
       }
       if(input$com_so){
-        data <- subset(sales(),trimws(Sales.Rep.2,"both") %in% trimws(input$sales_rep1,"both"))
+        data <- subset(sales(),trimws(Pro...Created.By,"both") %in% trimws(input$sales_rep1,"both"))
         sales.week <- aggregate(data$Maximum.of.Amount..Net.of.Tax.,by = list(data$year,data$week),FUN = sum)
         names(sales.week) <- c("Year","Week","Amount")
         sales.week <- subset(sales.week,trimws(sales.week$Year,"both") %in% trimws(input$year_sale,"both"))
@@ -1432,13 +1052,13 @@ shinyServer(function(input, output,session) {
       }
       if(input$avg_self_sale){
         h$series(name = "Individual Average", type = 'spline', color = "red",
-                 data = sales.day$avg_amount,dashStyle = "Dash")      
+                 data = sales.day$avg_amount,dashStyle = "Solid")      
       }
       if(input$SO_no){
         h$series(name = 'Total No', type = 'scatter', color = '#89A54E',data = sales.day$No,yAxis = 1)
       }
       if(input$com_so){
-        data <- subset(sales(),trimws(Sales.Rep.2,"both") %in% trimws(input$sales_rep1,"both"))
+        data <- subset(sales(),trimws(Pro...Created.By,"both") %in% trimws(input$sales_rep1,"both"))
         sales <- subset(data,as.Date(Date.Created) >= input$dateRange_sale[1]&as.Date(Date.Created) <= input$dateRange[2])
         sales.day <- aggregate(sales$Maximum.of.Amount..Net.of.Tax.,by = list(sales$Date.Created),FUN = sum)
         names(sales.day) <- c("Date","Amount")
@@ -1451,62 +1071,123 @@ shinyServer(function(input, output,session) {
     }
   })
   # Title in the summary part
-  output$title <- renderText(
-    if (input$reportty=="month" ){
-      if(input$level == "Segment"){
-        paste(paste(input$year_summary,input$list,"Summary Report by",input$level,sep = " "),
-              input$segLevel,sep=":")  
-      }
-      else if (input$level == "Sales Rep"){
-        paste(paste(input$year_summary,input$list,"Summary Report by",input$level,sep = " "),
-              input$RepLevel,sep=":")
-      }
-    }else if (input$reportty =="week"){
-      validate(need(input$list !="","select week"))
-      if(input$level == "Segment"){
-        paste(paste(input$year_summary,"Week",input$list,
-                    "(",date_in_week(as.numeric(input$year_summary),as.numeric(input$list)),")",
-                    "Summary Report by",input$level,sep = " "),input$segLevel,sep=":")  
-      }
-      else if (input$level == "Sales Rep"){
-        paste(paste(input$year_summary,"Week",input$list,
-                    "(",date_in_week(as.numeric(input$year_summary),as.numeric(input$list)),")",
-                    "Summary Report by",input$level,sep = " "),input$RepLevel,sep=":")
-      } 
+  
+  output$SummaryLeads <- renderChart2({
+    df <- leads()
+    max.year <- input$year_summary
+    if(input$reportty == "week"){
+      max.week <- max(df$week[df$year==max.year])
+      df.w <- subset(df,df$week %in% c((max.week-3):max.week)&df$year==max.year)
+      df.w.no <-aggregate(df.w$freq,by = list( df.w$year, df.w$week,  df.w$Created.By,df.w$segment),FUN = sum)
+      names(df.w.no) <- c("year","week","created.by","segment","no")
+      df = transform(df.w.no, seg_creator = paste(segment, created.by, sep = "_"))
+      r1<- nPlot(no ~ week, group = 'seg_creator', data = subset(df,df$segment==input$segLevel), type="multiBarChart") 
+      r1$templates$script <- "http://timelyportfolio.github.io/rCharts_nvd3_templates/chartWithTitle_styled.html"
+      r1$set(title = "No of Leads by Week")
+      
     }
+    else if(input$reportty == "month"){
+      df.m <- aggregate(df$freq,by = list( df$year, df$month,  df$Created.By,df$segment),FUN = sum)
+      names(df.m) <- c("year","month","created.by","segment","no")
+      df.m <- subset(df.m,df.m$year==max.year)
+      df = transform(df.m, seg_creator = paste(segment, created.by, sep = "_"))
+      r1<- nPlot(no ~ month, group = 'seg_creator', data = subset(df,df$segment==input$segLevel), type="multiBarChart")
+      r1$templates$script <- "http://timelyportfolio.github.io/rCharts_nvd3_templates/chartWithTitle_styled.html"
+      r1$set(title = "No of Leads by Month")
+    }
+    r1$chart(
+      showControls = FALSE 
     )
+    return(r1)
+  })
+  output$SummaryProposals <- renderChart2({
+    df <- proposal()
+    max.year <- input$year_summary
+    if(input$reportty == "week"){
+      max.week <- max(df$week[df$year==max.year])
+      df.w <- subset(df,df$week %in% c((max.week-3):max.week)&df$year==max.year)
+      df.w.no <-aggregate(df.w$Amount..Net.of.Tax.,by = list( df.w$year, df.w$week,  df.w$Created.By,df.w$segment),FUN = sum)
+      names(df.w.no) <- c("year","week","created.by","segment","amount")
+      df = transform(df.w.no, seg_creator = paste(segment, created.by, sep = "_"))
+      r1<- nPlot(amount ~ week, group = 'seg_creator', data = subset(df,df$segment==input$segLevel), type="multiBarChart") 
+      r1$templates$script <- "http://timelyportfolio.github.io/rCharts_nvd3_templates/chartWithTitle_styled.html"
+      r1$set(title = "Amount of Proposal by Week")
+    }
+    else if(input$reportty == "month"){
+      df.m <- aggregate(df$Amount..Net.of.Tax.,by = list( df$year, df$month,  df$Created.By,df$segment),FUN = sum)
+      names(df.m) <- c("year","month","created.by","segment","amount")
+      df.m <- subset(df.m,df.m$year==max.year)
+      df = transform(df.m, seg_creator = paste(segment, created.by, sep = "_"))
+      r1<- nPlot(amount ~ month, group = 'seg_creator', data = subset(df,df$segment==input$segLevel), type="multiBarChart")
+      r1$templates$script <- "http://timelyportfolio.github.io/rCharts_nvd3_templates/chartWithTitle_styled.html"
+      r1$set(title = "Amount of Proposal by Month")
+      r1$yAxis(tickFormat = "#! function(d) {return d3.format(',.2f')(d/1000000) + 'M' } !#")
+      
+    }
+    r1$chart(
+      showControls = FALSE 
+    )
+    return(r1)
+  })
+  output$SummaryContracts <- renderChart2({
+    df <- contract()
+    max.year <- input$year_summary
+    if(input$reportty == "week"){
+      max.week <- max(df$week[df$year==max.year])
+      df.w <- subset(df,df$week %in% c((max.week-3):max.week)&df$year==max.year)
+      df.w.no <-aggregate(df.w$Amount..Net.of.Tax.,by = list( df.w$year, df.w$week,  df.w$Created.By,df.w$segment),FUN = sum)
+      names(df.w.no) <- c("year","week","created.by","segment","amount")
+      df = transform(df.w.no, seg_creator = paste(segment, created.by, sep = "_"))
+      r1<- nPlot(amount ~ week, group = 'seg_creator', data = subset(df,df$segment==input$segLevel), type="multiBarChart") 
+      r1$templates$script <- "http://timelyportfolio.github.io/rCharts_nvd3_templates/chartWithTitle_styled.html"
+      r1$set(title = "Amount of Contract by Week")
+    }
+    else if(input$reportty == "month"){
+      df.m <- aggregate(df$Amount..Net.of.Tax.,by = list( df$year, df$month,  df$Created.By,df$segment),FUN = sum)
+      names(df.m) <- c("year","month","created.by","segment","amount")
+      df.m <- subset(df.m,df.m$year==max.year)
+      df = transform(df.m, seg_creator = paste(segment, created.by, sep = "_"))
+      r1<- nPlot(amount ~ month, group = 'seg_creator', data = subset(df,df$segment==input$segLevel), type="multiBarChart")
+      r1$templates$script <- "http://timelyportfolio.github.io/rCharts_nvd3_templates/chartWithTitle_styled.html"
+      r1$set(title = "Amount of Contract by Month")
+      r1$yAxis(tickFormat = "#! function(d) {return d3.format(',.2f')(d/1000000) + 'M' } !#")
+      
+    }
+    r1$chart(
+      showControls = FALSE 
+    )
+    return(r1)
+  })
+  output$SummarySOs <- renderChart2({
+    df <- sales()
+    max.year <- input$year_summary
+    if(input$reportty == "week"){
+      max.week <- max(df$week[df$year==max.year])
+      df.w <- subset(df,df$week %in% c((max.week-3):max.week)&df$year==max.year)
+      df.w.no <-aggregate(df.w$Maximum.of.Amount..Net.of.Tax.,
+                          by = list( df.w$year, df.w$week,  df.w$Pro...Created.By,df.w$segment),FUN = sum)
+      names(df.w.no) <- c("year","week","created.by","segment","amount")
+      df = transform(df.w.no, seg_creator = paste(segment, created.by, sep = "_"))
+      r1<- nPlot(amount ~ week, group = 'seg_creator', data = subset(df,df$segment==input$segLevel), type="multiBarChart") 
+      r1$templates$script <- "http://timelyportfolio.github.io/rCharts_nvd3_templates/chartWithTitle_styled.html"
+      r1$set(title = "Amount of SalesOrder by Week")
+    }
+    else if(input$reportty == "month"){
+      df.m <- aggregate(df$Maximum.of.Amount..Net.of.Tax.,by = list( df$year, df$month,  df$Pro...Created.By,df$segment),FUN = sum)
+      names(df.m) <- c("year","month","created.by","segment","amount")
+      df.m <- subset(df.m,df.m$year==max.year)
+      df = transform(df.m, seg_creator = paste(segment, created.by, sep = "_"))
+      r1<- nPlot(amount ~ month, group = 'seg_creator', data = subset(df,df$segment==input$segLevel), type="multiBarChart")
+      r1$templates$script <- "http://timelyportfolio.github.io/rCharts_nvd3_templates/chartWithTitle_styled.html"
+      r1$set(title = "Amount of SalesOrder by Month")
+      r1$yAxis(tickFormat = "#! function(d) {return d3.format(',.2f')(d/1000000) + 'M' } !#")
+      
+    }
+    r1$chart(
+      showControls = FALSE 
+    )
+    return(r1)
+  })
  
-  # download all the tables
-  output$downloadLeads <- downloadHandler(
-    filename = function(){
-      paste('Leads','.csv',sep='')
-    },
-    content = function(file){
-      write.csv(LeadsTable(),file)
-    }
-  )
-  output$downloadSales <- downloadHandler(
-    filename = function(){
-      paste('sales','.csv',sep='')
-    },
-    content = function(file){
-      write.csv(SalesTable(),file)
-    }
-  )
-  output$downloadContract <- downloadHandler(
-    filename = function(){
-      paste('Contract','.csv',sep='')
-    },
-    content = function(file){
-      write.csv(ContractTable(),file)
-    }
-  )
-  output$downloadProposal <- downloadHandler(
-    filename = function(){
-      paste('Proposal','.csv',sep='')
-    },
-    content = function(file){
-      write.csv(ProposalTable(),file)
-    }
-  )
+
  })

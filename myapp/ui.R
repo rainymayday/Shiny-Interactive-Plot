@@ -1,10 +1,16 @@
 library(shiny)
 require(rCharts)
+library(DT)
 shinyUI(
   navbarPage(
-    img(src="logo2.png",height=40,width=120),
-                   tabPanel("Upload Data File For Analysis",
+    tags$head(tags$style("h4 {font-family:
+                            font-weight: bold;
+                         line-height: 0.2; 
+                         color: #4d3a7d; }")),
+     tabPanel(
+       h4("Upload Data File For Analysis"),
                             column(3, wellPanel(
+                              helpText("Choose spreadsheet file:(xlsx)"),
                               fileInput('file0', 'Upload Sales_rep Table',
                                         multiple = FALSE),
                               fileInput('file1', 'Upload Leads Table',
@@ -25,9 +31,11 @@ shinyUI(
                                 tabPanel("Contract",tableOutput("contact"), icon = icon("table")),
                                 tabPanel("Sales Order",tableOutput("sales"), icon = icon("table"))
                               )
-                            )),
+                            )
+                     ),
                             
-                   tabPanel("Leads",
+                   tabPanel(
+                     h4("Leads"),
                             column(3, wellPanel(
                               uiOutput('segment'),
                               uiOutput('LeadsGen'),
@@ -41,22 +49,19 @@ shinyUI(
                                                        , selected="day")
                                 )
                               ),
-                              
                               fluidRow(
                                 column(12,h5(strong('Plot Options')),
                                        checkboxInput('avg_line','Team Average'),
                                        checkboxInput("avg_self","Individual Average"),
-                                       checkboxInput("compare_rep","Compare with Other sales Rep"),
-                                       checkboxInput("compare_last_year","Compare with last year performance"),
-                                       downloadButton('downloadLeads','Download Leads Table'))
+                                       checkboxInput("compare_rep","Compare with Other sales Rep")
+                                       )
                               ))
                             ),
                             mainPanel(
-                              tabsetPanel(type="tab",
-                                          tabPanel("Leads Plot",showOutput("LeadsPlot","highcharts"), icon = icon("bar-chart-o")),
-                                          tabPanel("Leads Table",dataTableOutput("LeadsTable"), icon = icon("table"))
-                                          ))),
-                   tabPanel("Proposal",
+                              showOutput("LeadsPlot","highcharts")
+                              )),
+                   tabPanel(
+                     h4("Proposal"),
                             column(3,wellPanel(
                               uiOutput("segment_pro"),
                               uiOutput("Proposal_creator"),
@@ -75,18 +80,18 @@ shinyUI(
                                        checkboxInput("avg_line_pro","Team Average"),
                                        checkboxInput("avg_self_pro","Individual Average"),
                                        checkboxInput("proposal_no","Show No of Proposal"),
-                                       checkboxInput("comp_pro","Comapre with other Proposal Creator"),
-                                       downloadButton('downloadProposal','Download Proposal Table')
+                                       checkboxInput("comp_pro","Comapre with other Proposal Creator")
+                                       
                                 )
                                 
                               )
                             )
                             ),
-                            mainPanel(tabsetPanel(type="tab",
-                                                  tabPanel("Proposal Plot",showOutput("ProposalPlots","highcharts"), icon = icon("bar-chart-o")),
-                                                  tabPanel("Proposal Table",
-                                                           dataTableOutput("ProposalTable"), icon = icon("table"))))),
-                   tabPanel("Contract",
+                            mainPanel(
+                              showOutput("ProposalPlots","highcharts")
+                              )),
+                   tabPanel(
+                     h4("Contract"),
                             column(3,wellPanel(
                               uiOutput("segment_con"),
                               uiOutput("Contract_creator"),
@@ -106,52 +111,47 @@ shinyUI(
                                        checkboxInput("avg_line_con","Team Average"),
                                        checkboxInput("avg_self_con","Individual Average"),
                                        checkboxInput("contract_no","Show No of Contracts"),
-                                       checkboxInput("com_con","Compare with other contractor creators"),
-                                       downloadButton('downloadContract','Download Contract Table')
+                                       checkboxInput("com_con","Compare with other contractor creators")
+                                       
                                        )
                               )
                             )),
                             mainPanel(
-                              tabsetPanel(type = "tab",
-                                          tabPanel("Contract Plot",showOutput("ContractPlots","highcharts"), icon = icon("bar-chart-o")),
-                                          tabPanel("Contract Table",dataTableOutput("ContractTable"), icon = icon("table")))  
+                              showOutput("ContractPlots","highcharts")
                             )),
-                   tabPanel("Sales Order",
-                            column(3, wellPanel(
-                              uiOutput("segment_sale"),
-                              uiOutput("sales_rep"),
-                              uiOutput("sales_rep1"),
-                              uiOutput('dateRange_sale'),
-                              uiOutput('year_sale'),
-                              br(),
-                              fluidRow(
-                                column(7, radioButtons("plotty_sale", "Plot Type",
-                                                       c("By day"="day","By week"="week","By month"="month")
+                   tabPanel(
+                     h4("Sales Order"),
+                        column(3, wellPanel(
+                        uiOutput("segment_sale"),
+                        uiOutput("sales_rep"),
+                        uiOutput("sales_rep1"),
+                        uiOutput('dateRange_sale'),
+                        uiOutput('year_sale'),
+                        br(),
+                        fluidRow(
+                            column(7, radioButtons("plotty_sale", "Plot Type",
+                                                     c("By day"="day","By week"="week","By month"="month")
                                                        , selected="day")
-                                )
+                              )
                               ),
-                              fluidRow(
-                                column(12,
-                                       h5(strong('Plot Options')),
-                                       checkboxInput('avg_line_sale'
-                                                     ,'Team Average'),
-                                       checkboxInput('avg_self_sale'
-                                                     ,'Individual Average'),
-                                       checkboxInput("SO_no","Show No of Sales Order"),
-                                       checkboxInput("com_so","Compare with other sales rep"),
-                                       downloadButton('downloadSales'
-                                                      ,'Download Sales Table'))
+                        fluidRow(
+                            column(12,
+                                   h5(strong('Plot Options')),
+                                   checkboxInput('avg_line_sale'
+                                                 ,'Team Average'),
+                                   checkboxInput('avg_self_sale'
+                                                 ,'Individual Average'),
+                                   checkboxInput("SO_no","Show No of Sales Order"),
+                                   checkboxInput("com_so","Compare with other sales rep")
+                                   )
                               ))
                             ),
-                            mainPanel(
-                              tabsetPanel(type="tab",
-                                          tabPanel("Sales Plot",showOutput("SalesPlot","highcharts"), icon = icon("bar-chart-o")),
-                                          tabPanel("Sales Table",dataTableOutput("SalesTable"), icon = icon("table"))
-                                          
-                              ))
+                        mainPanel(
+                          showOutput("SalesPlot","highcharts")
+                          )
                             ),
-                  
-                   tabPanel("Summary",
+                   tabPanel(
+                     h4("Summary"),
                             column(3,wellPanel(
                               fluidRow(
                                 column(7, radioButtons("reportty", "Report Type",
@@ -159,30 +159,29 @@ shinyUI(
                                                        , selected="month")
                                 )),
                               uiOutput("year_summary"),
-                              uiOutput("selectList"),
-                              selectInput("level","Level",choices = c("Segment","Sales Rep"),
-                                          selected = "Segment"),
-                              uiOutput("segLevel"),
-                              uiOutput("RepLevel")
+                              uiOutput("segLevel")
                             )),
                             mainPanel(
                               tabsetPanel(type = "tab",
                                           tabPanel("Highlights",
-                                                   h2(textOutput("title")),
+                                                   DT::dataTableOutput('SummaryTable'),
+                                                   icon = icon("list-alt")
+                                          ),
+                                          tabPanel("Summary Plots",
                                                    fluidRow(
-                                                     column(6,h3("Leads Summary"),
-                                                            tableOutput("leads1")),
-                                                     column(6,h3("Contract Summary"),
-                                                            tableOutput("contract1")
-                                                      )
-                                                     ),
+                                                     showOutput("SummaryLeads","nvd3") 
+                                                   ),
                                                    fluidRow(
-                                                     column(6,h3("Proposal Summary"),
-                                                            tableOutput("proposal1")
-                                                            ),
-                                                     column(6,h3("Sales Order Summary"),
-                                                            tableOutput("so1"))), icon = icon("list-alt")
-                                          )
+                                                     showOutput("SummaryProposals","nvd3") 
+                                                   ),
+                                                   fluidRow(
+                                                     showOutput("SummaryContracts","nvd3") 
+                                                   ),
+                                                   fluidRow(
+                                                     showOutput("SummarySOs","nvd3") 
+                                                   ),
+                                                   
+                                                   icon = icon("bar-chart-o"))
                                           )
                             )),windowTitle = "Sales Activity Report"
                             ))
